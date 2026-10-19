@@ -95,3 +95,16 @@ def test_reading_keeps_all_four_forms_and_render_shows_them():
     assert x["forms"]["inverse"] == (3, 0.5, 12)
     md = ns.render_next([x, ns.reading(_result(0, None))], {"sha256": "s"})
     assert "| 元の命題 | 対偶 | 逆 | 裏 |" in md and "3・0.50（12）" in md and "省略: " in md
+
+
+def test_next_seeds_cli_markdown_option(tmp_path):
+    import json
+    f = tmp_path / "propositions.jsonl"
+    out_md = tmp_path / "outputs" / "next_seeds.md"
+    f.write_text(json.dumps(_result(1, 3, cx_o=["d-2019"])) + "\n", encoding="utf-8")
+
+    assert ns.main(["next", str(f), "--markdown", str(out_md)]) == 0
+    assert out_md.exists()
+    content = out_md.read_text(encoding="utf-8")
+    assert "# 次の命題の種（自動生成）" in content
+    assert "## 1 " in content

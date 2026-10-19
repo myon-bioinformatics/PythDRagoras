@@ -159,6 +159,7 @@ def main(argv=None) -> int:
     nx.add_argument("results", type=Path, help="pythdragoras.py が書いた propositions.jsonl")
     nx.add_argument("--id", nargs="+", dest="ids")
     nx.add_argument("--reading", type=int, nargs="+", choices=sorted(READING), help="この読みの番号だけを表示する")
+    nx.add_argument("-m", "--markdown", type=Path, help="Markdown レポートを出力するファイルパス")
     args = ap.parse_args(argv)
 
     if args.cmd == "next":
@@ -170,12 +171,18 @@ def main(argv=None) -> int:
         if missing := [i for i in args.ids or [] if i not in known]:
             print(f"[64] {label(64)}（そんな id はない: {', '.join(missing)}）", file=sys.stderr)
             return 64
+        matched_readings = []
         for x in map(reading, results):
             if (args.ids and x["id"] not in args.ids) or (args.reading and x["reading"] not in args.reading):
                 continue
+            matched_readings.append(x)
             route = "—" if x["route"] is None else x["route"]["n"]
             print(f"[{x['reading']}] {x['id']} {READING[x['reading']][0]}  元 {x['original']} 逆 {x['converse'] if x['converse'] is not None else '—'}"
                   f"  絞る {x['narrow']['n']} 道筋 {route}  {x['key']}")
+        if args.markdown:
+            meta = results[0].get("meta", {}) if results else {}
+            args.markdown.parent.mkdir(parents=True, exist_ok=True)
+            args.markdown.write_text(render_next(matched_readings, meta), encoding="utf-8")
         return 0  # 読みは判定ではないので、失敗にしない
 
 
