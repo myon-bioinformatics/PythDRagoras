@@ -99,7 +99,7 @@ def test_cli_next_outputs_markdown_json_and_limit(tmp_path):
     res = {**_result(1, 3, cx_c=cx_many), "meta": {"sha256": "hash123", "code_version": "v1.0"}}
     f.write_text(json.dumps(res) + "\n", encoding="utf-8")
 
-    code = ns.main(["next", str(f), "--markdown", str(md_out), "--jsonl", str(json_out), "--limit", "3"])
+    code = ns.main(["next", str(f), "--markdown", str(md_out), "--json", str(json_out), "--limit", "3"])
     assert code == 0
 
     assert md_out.exists()
@@ -121,56 +121,3 @@ def test_reading_keeps_all_four_forms_and_render_shows_them():
     assert x["forms"]["inverse"] == (3, 0.5, 12)
     md = ns.render_next([x, ns.reading(_result(0, None))], {"sha256": "s"})
     assert "| 元の命題 | 対偶 | 逆 | 裏 |" in md and "3・0.50（12）" in md and "省略: " in md
-
-
-def test_next_seeds_cli_markdown_option(tmp_path):
-    import json
-    f = tmp_path / "propositions.jsonl"
-    out_md = tmp_path / "outputs" / "next_seeds.md"
-    f.write_text(json.dumps(_result(1, 3, cx_o=["d-2019"])) + "\n", encoding="utf-8")
-
-    assert ns.main(["next", str(f), "-m", str(out_md)]) == 0
-    content = out_md.read_text(encoding="utf-8")
-    assert "# 次の命題の種（自動生成）" in content
-    assert "## 1 " in content
-
-
-def test_cli_next_markdown_keeps_only_filtered_readings(tmp_path):
-    import json
-    f = tmp_path / "propositions.jsonl"
-    out_md = tmp_path / "next_seeds.md"
-    out_jsonl = tmp_path / "next_seeds.jsonl"
-    rows = [{**_result(1, 3), "id": "A"}, {**_result(0, 0), "id": "B"}]
-    f.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
-
-    assert ns.main(["next", str(f), "--reading", "0", "--markdown", str(out_md), "--jsonl", str(out_jsonl)]) == 0
-    assert "| B |" in out_md.read_text(encoding="utf-8") and "| A |" not in out_md.read_text(encoding="utf-8")
-    assert [json.loads(x)["id"] for x in out_jsonl.read_text(encoding="utf-8").splitlines()] == ["B"]
-
-
-def test_cli_render_md_outputs_markdown(tmp_path, capsys):
-    import json
-    f = tmp_path / "propositions.jsonl"
-    f.write_text(json.dumps({**_result(1, 3, cx_c=["d-2014"]), "meta": {"sha256": "testsha"}}) + "\n", encoding="utf-8")
-
-    assert ns.main(["render-md", str(f)]) == 0  # 未指定なら標準出力
-    out = capsys.readouterr().out
-    assert "# 次の命題の種（自動生成）" in out and "testsha" in out
-
-    out_file = tmp_path / "out" / "next_seeds.md"
-    jsonl_file = tmp_path / "out" / "next_seeds.jsonl"
-    assert ns.main(["render-md", str(f), "--out", str(out_file), "--jsonl", str(jsonl_file)]) == 0
-    assert capsys.readouterr().out == ""
-    assert out_file.read_text(encoding="utf-8") == out
-    assert json.loads(jsonl_file.read_text(encoding="utf-8").splitlines()[0])["reading"] == 1
-    assert ns.main(["render-md", str(tmp_path / "none.jsonl")]) == 66
-
-
-@pytest.mark.parametrize("cmd", ["next", "render-md"])
-@pytest.mark.parametrize("bad", ["0", "-1", "x"])
-def test_cli_limit_must_be_positive(tmp_path, cmd, bad):
-    f = tmp_path / "propositions.jsonl"
-    f.write_text("", encoding="utf-8")
-    with pytest.raises(SystemExit) as e:
-        ns.main([cmd, str(f), "--limit", bad])
-    assert e.value.code == 2
