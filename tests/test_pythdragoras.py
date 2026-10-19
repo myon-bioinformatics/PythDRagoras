@@ -75,6 +75,34 @@ def test_summary_renders():
     assert isinstance(md, str) and md  # 表示は作れること（中身の言葉は判定に使わない）
 
 
+def test_next_seeds_cli_renders_from_propositions_jsonl(tmp_path):
+    import json
+    import next_seeds as ns
+
+    props_jsonl = tmp_path / "propositions.jsonl"
+    res = ns.reading({"id": "P1", "key": "[all] rd>0 => rank<=3", "forms": [
+        {"form": "original", "code": 1, "rate": 0.9, "n": 10, "counterexamples": []},
+        {"form": "contrapositive", "code": 1, "rate": 0.9, "n": 10, "counterexamples": []},
+        {"form": "converse", "code": 3, "rate": 0.4, "n": 10, "counterexamples": []},
+        {"form": "inverse", "code": 3, "rate": 0.4, "n": 10, "counterexamples": []},
+    ], "judgement": {"code": 1}, "meta": {"sha256": "sha123"}})
+    props_jsonl.write_text(json.dumps({"id": "P1", "key": "[all] rd>0 => rank<=3", "forms": [
+        {"form": "original", "code": 1, "rate": 0.9, "n": 10, "counterexamples": []},
+        {"form": "contrapositive", "code": 1, "rate": 0.9, "n": 10, "counterexamples": []},
+        {"form": "converse", "code": 3, "rate": 0.4, "n": 10, "counterexamples": []},
+        {"form": "inverse", "code": 3, "rate": 0.4, "n": 10, "counterexamples": []},
+    ], "judgement": {"code": 1}, "meta": {"sha256": "sha123"}}) + "\n", encoding="utf-8")
+
+    out_md = tmp_path / "next_seeds.md"
+    out_jsonl = tmp_path / "next_seeds.jsonl"
+    code = ns.main(["render-md", str(props_jsonl), "--out", str(out_md), "--jsonl", str(out_jsonl)])
+    assert code == 0
+    assert out_md.exists()
+    assert out_jsonl.exists()
+    assert "sha123" in out_md.read_text(encoding="utf-8")
+    assert '"reading": 1' in out_jsonl.read_text(encoding="utf-8")
+
+
 @pytest.mark.parametrize("n,r,p_bb,p_tb,pi_b", [(4, 2, 0.7, 0.3, 0.5), (5, 3, 0.66, 0.34, 0.5), (6, 1, 0.9, 0.1, 0.2), (3, 3, 0.5, 0.5, 0.5)])
 def test_markov_run_tail_matches_brute_force(n, r, p_bb, p_tb, pi_b):
     from pythdragoras import markov_run_tail

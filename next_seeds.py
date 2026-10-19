@@ -159,13 +159,35 @@ def main(argv=None) -> int:
     nx.add_argument("results", type=Path, help="pythdragoras.py が書いた propositions.jsonl")
     nx.add_argument("--id", nargs="+", dest="ids")
     nx.add_argument("--reading", type=int, nargs="+", choices=sorted(READING), help="この読みの番号だけを表示する")
+
+    rmd = sub.add_parser("render-md", aliases=["render"], help="propositions.jsonl から next_seeds.md を生成する")
+    rmd.add_argument("results", type=Path, help="pythdragoras.py が書いた propositions.jsonl")
+    rmd.add_argument("--out", type=Path, help="出力先の Markdown ファイルパス（未指定時は標準出力）")
+    rmd.add_argument("--jsonl", type=Path, help="出力先の jsonl ファイルパス")
+
     args = ap.parse_args(argv)
 
+    if not args.results.exists():
+        print(f"[66] {label(66)}: {args.results}", file=sys.stderr)
+        return 66
+
+    results = [json.loads(line) for line in args.results.read_text(encoding="utf-8").splitlines()]
+
+    if args.cmd in ("render-md", "render"):
+        readings = [reading(r) for r in results]
+        meta = results[0].get("meta", {}) if results else {}
+        md_text = render_next(readings, meta)
+        if args.out:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(md_text, encoding="utf-8")
+        else:
+            print(md_text, end="")
+        if args.jsonl:
+            args.jsonl.parent.mkdir(parents=True, exist_ok=True)
+            args.jsonl.write_text("".join(json.dumps(r, ensure_ascii=False, default=str) + "\n" for r in readings), encoding="utf-8")
+        return 0
+
     if args.cmd == "next":
-        if not args.results.exists():
-            print(f"[66] {label(66)}: {args.results}", file=sys.stderr)
-            return 66
-        results = [json.loads(line) for line in args.results.read_text(encoding="utf-8").splitlines()]
         known = {r["id"] for r in results}
         if missing := [i for i in args.ids or [] if i not in known]:
             print(f"[64] {label(64)}（そんな id はない: {', '.join(missing)}）", file=sys.stderr)

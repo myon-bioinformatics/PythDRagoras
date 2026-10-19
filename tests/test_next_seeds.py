@@ -95,3 +95,24 @@ def test_reading_keeps_all_four_forms_and_render_shows_them():
     assert x["forms"]["inverse"] == (3, 0.5, 12)
     md = ns.render_next([x, ns.reading(_result(0, None))], {"sha256": "s"})
     assert "| 元の命題 | 対偶 | 逆 | 裏 |" in md and "3・0.50（12）" in md and "省略: " in md
+
+
+def test_cli_render_md_outputs_markdown(tmp_path, capsys):
+    f = tmp_path / "propositions.jsonl"
+    import json
+    f.write_text(json.dumps({**_result(1, 3, cx_c=["d-2014"]), "meta": {"sha256": "testsha"}}) + "\n", encoding="utf-8")
+
+    # stdout
+    assert ns.main(["render-md", str(f)]) == 0
+    out = capsys.readouterr().out
+    assert "# 次の命題の種（自動生成）" in out
+    assert "testsha" in out
+
+    # file output and jsonl output
+    out_file = tmp_path / "next_seeds.md"
+    jsonl_file = tmp_path / "next_seeds.jsonl"
+    assert ns.main(["render-md", str(f), "--out", str(out_file), "--jsonl", str(jsonl_file)]) == 0
+    assert out_file.exists()
+    assert "# 次の命題の種（自動生成）" in out_file.read_text(encoding="utf-8")
+    assert jsonl_file.exists()
+    assert '"reading": 1' in jsonl_file.read_text(encoding="utf-8")
