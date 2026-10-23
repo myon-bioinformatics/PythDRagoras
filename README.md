@@ -1,5 +1,11 @@
 # PythDRagoras
 
+<p align="center">
+  <img src="docs/brand/icon.png" alt="PythDRagoras icon" width="160" />
+</p>
+
+[Icon](docs/brand/icon.png) · [Favicon](docs/brand/favicon.png)
+
 > Propositions, precedents, objections.
 >
 > Tests explanations as propositions with counterexamples, rule search and sensitivity analysis for NPB baseball outcomes. Split out from Aoi's pythdragoras/ (git subtree).
