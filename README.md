@@ -311,5 +311,10 @@ Measured on 6 kinds of 64x64 synthetic images. Tests use fixed seeds (11–16), 
 - `node score_sensitivity.cjs <args>` runs `score_sensitivity.py` (interpreter override: `SCORE_SENSITIVITY_PYTHON`).
 
 Each entry uses the vendored shared launcher `vendor/py_launch.cjs` (pinned in `vendor.lock.json`).
-Arguments, stdin/stdout/stderr and the exit code are passed through unchanged; Python runs with `-S`.
-Launcher failures (no Python 3.9+, spawn error, signal) exit 2.
+Arguments, stdin/stdout/stderr and the exit code are passed through unchanged; Python runs with `-S`, including interpreter discovery.
+The launcher is copied from the merged [Aoi #117](https://github.com/myon-bioinformatics/Aoi/pull/117)
+commit `bb5eb56f216eeff9135b7aa178197a79df152396`, not directly from Aoi's parent.
+SIGINT and SIGTERM continue to be forwarded while the Python child is alive, even after an earlier signal was handled or ignored.
+Launcher failures (no Python 3.9+, spawn error, signal) exit 2. Set `PY_LAUNCH_ERROR_FORMAT=json` for a single structured error on stderr; signal failures report the signal that actually terminated the child.
+
+Regression tests cover every thin entry with acknowledged repeated signals, text/JSON errors, and a hostile `sitecustomize` hook. They also test `noSite` and `isolated` discovery independently without changing the entries' `noSite: true` configuration or the Node 24+ floor.
