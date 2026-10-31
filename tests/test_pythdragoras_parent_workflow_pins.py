@@ -53,7 +53,7 @@ def test_vendor_dispatch_verifies_lock_on_resolved_parent_main():
     assert 'node-version: "24"' in text
     assert 'python-version: "3.12"' in text
     assert "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0" in text
-    assert "actions/checkout@v7" in text
+    assert "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1" in text
     for line in text.splitlines():
         if "vendor_dispatch.py" in line:
             assert "-S" not in line

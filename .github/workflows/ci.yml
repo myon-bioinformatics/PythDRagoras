@@ -41,7 +41,7 @@ jobs:
         # Aoi の CI と同じ
         python: ["3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Resolve Aoi ref
         shell: bash
         env:
@@ -112,7 +112,7 @@ jobs:
             echo "### Aoi"
             echo "Resolved \`${label}\` of \`${repository}\` (${repository_id}) to \`${sha}\`."
           } >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: myon-bioinformatics/Aoi
           ref: ${{ env.AOI_SHA }}
@@ -152,7 +152,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Resolve parent main
@@ -206,7 +206,7 @@ jobs:
             echo "### Parent"
             echo "Resolved \`${ref}\` of \`${repository}\` (${repository_id}) to \`${sha}\`."
           } >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: myon-bioinformatics/myon-bioinformatics
           ref: ${{ steps.parent.outputs.sha }}
