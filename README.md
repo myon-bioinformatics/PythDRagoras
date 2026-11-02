@@ -304,7 +304,7 @@ Measured on 6 kinds of 64x64 synthetic images. Tests use fixed seeds (11–16), 
 - Shifting the reconstructed region by (3, 2) lowers IoU in every scenario (lines drop to around 0.07, filled shapes to about 0.6–0.74).
 - All 6 scenarios are measurements on fixed synthetic images; performance on real images is not guaranteed.
 
-## Node entry (Node 24+)
+## Node entry (Node 26+)
 
 - `node littlebit_survey.cjs <args>` runs `littlebit_survey.py` (interpreter override: `LITTLEBIT_SURVEY_PYTHON`).
 - `node season_sensitivity.cjs <args>` runs `season_sensitivity.py` (interpreter override: `SEASON_SENSITIVITY_PYTHON`).
@@ -317,4 +317,4 @@ commit `bb5eb56f216eeff9135b7aa178197a79df152396`, not directly from Aoi's paren
 SIGINT and SIGTERM continue to be forwarded while the Python child is alive, even after an earlier signal was handled or ignored.
 Launcher failures (no Python 3.9+, spawn error, signal) exit 2. Set `PY_LAUNCH_ERROR_FORMAT=json` for a single structured error on stderr; signal failures report the signal that actually terminated the child.
 
-Regression tests cover every thin entry with acknowledged repeated signals, text/JSON errors, and a hostile `sitecustomize` hook. They also test `noSite` and `isolated` discovery independently without changing the entries' `noSite: true` configuration or the Node 24+ floor.
+Regression tests cover every thin entry with acknowledged repeated signals, text/JSON errors, and a hostile `sitecustomize` hook. They also test `noSite` and `isolated` discovery independently without changing the entries' `noSite: true` configuration or the Node 26+ floor.

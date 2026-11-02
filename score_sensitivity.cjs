@@ -1,5 +1,5 @@
 "use strict";
-/** Thin Node entry (Node 24+): runs score_sensitivity.py through the shared vendor/py_launch.cjs. */
+/** Thin Node entry (Node 26+): runs score_sensitivity.py through the shared vendor/py_launch.cjs. */
 const path = require("node:path");
 const { main } = require("./vendor/py_launch.cjs");
 

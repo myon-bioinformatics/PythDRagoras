@@ -31,7 +31,7 @@ def _node() -> str | None:
 
 
 NODE = _node()
-pytestmark = pytest.mark.skipif(NODE is None, reason="Node 24+ not available (set NODE)")
+pytestmark = pytest.mark.skipif(NODE is None, reason="Node 26+ not available (set NODE)")
 
 
 def _copy_entry(tmp_path: Path, tool: str) -> dict[str, str]:
