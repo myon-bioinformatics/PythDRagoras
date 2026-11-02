@@ -7,8 +7,8 @@
       "commit": "bb5eb56f216eeff9135b7aa178197a79df152396",
       "source": "vendor/py_launch.cjs",
       "destination": "vendor/py_launch.cjs",
-      "blob_sha": "006817bc813187fa45abc3e8954fde27a2b73caa",
-      "sha256": "a78fe656cde285a83501b9b19d97b9ebde6f9637919b3adb95c50eb254154536"
+      "blob_sha": "2c6cbfef3da3a9f060fb93bd61ad1a2b137cb99a",
+      "sha256": "f2f3cb721e8489dd8e4f49571da568ad6e6dce5f67501a5af25bf5b04b9746dc"
     }
   ]
 }

@@ -27,11 +27,11 @@ def _node() -> str | None:
     except (OSError, subprocess.SubprocessError):
         return None
     match = re.match(r"v(\d+)", out.strip())
-    return node if match and int(match.group(1)) >= 24 else None
+    return node if match and int(match.group(1)) >= 26 else None
 
 
 NODE = _node()
-needs_node = pytest.mark.skipif(NODE is None, reason="Node 24+ not available (set NODE)")
+needs_node = pytest.mark.skipif(NODE is None, reason="Node 26+ not available (set NODE)")
 
 
 def _env() -> dict[str, str]:
@@ -71,7 +71,7 @@ def test_entry_uses_shared_launcher_only():
     assert "child_process" not in text
     assert f'"{TOOL}.py"' in text
     pkg = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
-    assert pkg["engines"]["node"] == ">=24"
+    assert pkg["engines"]["node"] == ">=26"
 
 
 @needs_node
