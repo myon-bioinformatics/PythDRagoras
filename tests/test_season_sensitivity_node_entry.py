@@ -57,7 +57,7 @@ def test_vendored_launcher_matches_lock():
     lock = json.loads((ROOT / "vendor.lock.json").read_text(encoding="utf-8"))
     entry = next(f for f in lock["files"] if f["destination"] == "vendor/py_launch.cjs")
     assert entry["repository"] == "myon-bioinformatics/Aoi"
-    assert entry["commit"] == entry["ref"] == "827387a2c9339edd45b3ee2fc9d18120695166a0"
+    assert entry["commit"] == entry["ref"] == "9e0147a17695ce63fa73daf75d8195a4f49095bb"
     assert entry["source"] == "vendor/py_launch.cjs"
     data = (ROOT / "vendor" / "py_launch.cjs").read_bytes()
     assert hashlib.sha256(data).hexdigest() == entry["sha256"]

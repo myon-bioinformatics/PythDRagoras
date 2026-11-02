@@ -312,7 +312,7 @@ Measured on 6 kinds of 64x64 synthetic images. Tests use fixed seeds (11–16), 
 Each entry uses the vendored shared launcher `vendor/py_launch.cjs` (pinned in `vendor.lock.json`).
 Arguments, stdin/stdout/stderr and the exit code are passed through unchanged; Python runs with `-S`, including interpreter discovery.
 The launcher is copied from the merged [Aoi #149](https://github.com/myon-bioinformatics/Aoi/pull/149)
-commit `827387a2c9339edd45b3ee2fc9d18120695166a0`, not directly from Aoi's parent.
+commit `9e0147a17695ce63fa73daf75d8195a4f49095bb`, not directly from Aoi's parent.
 SIGINT and SIGTERM continue to be forwarded while the Python child is alive, even after an earlier signal was handled or ignored.
 Launcher failures (no Python 3.9+, spawn error, signal) exit 2. Set `PY_LAUNCH_ERROR_FORMAT=json` for a single structured error on stderr; signal failures report the signal that actually terminated the child.
 
