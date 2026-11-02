@@ -2,9 +2,9 @@
   "schema": "vendor-lock/1",
   "files": [
     {
-      "repository": "myon-bioinformatics/Aoi",
-      "ref": "827387a2c9339edd45b3ee2fc9d18120695166a0",
-      "commit": "827387a2c9339edd45b3ee2fc9d18120695166a0",
+      "repository": "myon-bioinformatics/myon-bioinformatics",
+      "ref": "1f6f1e345f640827703e2872151a73b4cbdfd382",
+      "commit": "1f6f1e345f640827703e2872151a73b4cbdfd382",
       "source": "vendor/py_launch.cjs",
       "destination": "vendor/py_launch.cjs",
       "blob_sha": "4a35b158b4a4cbd3a5d672ded1337a138a44bbd2",
