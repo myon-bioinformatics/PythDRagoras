@@ -25,7 +25,7 @@ def _node() -> str | None:
         except (OSError, subprocess.SubprocessError):
             return None
         match = re.match(r"v(\d+)", result.stdout.strip())
-        if result.returncode == 0 and match and int(match[1]) >= 24:
+        if result.returncode == 0 and match and int(match[1]) >= 26:
             return node
     return None
 
