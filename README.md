@@ -90,6 +90,10 @@ AOI_ROOT=$PWD/.test-deps/aoi uv run pytest -q --junitxml=reports/junit.xml
 
 CI (`.github/workflows/ci.yml`) does the same on Python 3.11–3.15. A ref can be given via `aoi_ref` in `workflow_dispatch`. The resolved SHA is left in the job summary.
 
+For work on the stdlib audit and sensitivity modules, an optional locked
+[`audit-test` environment](docs/nano-audit-tests.md) runs four existing test files
+without NumPy/Polars. Keep the ordinary full suite for final verification.
+
 - Tests receive Aoi only through `AOI_ROOT` (the one env var CI sets). `conftest.py` adds the `sakanalytics` path from it, and `PYTHONPATH` is not set by hand. Tests ask Aoi's `aoi_paths.py` for data locations. No `aoi_paths.py` is kept in this repository.
 - If `AOI_ROOT` doesn't point to Aoi, pytest stops at the start and gives the reason.
 - The only runtime dependencies are polars and numpy (ortools is not used).
