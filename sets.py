@@ -69,7 +69,8 @@ def set_dnf(s: dict, props: dict[str, dict]) -> list[list[dict]]:
 
 def tokens(expr: str) -> list[str]:
     out, pos = [], 0
-    while pos < len(expr.rstrip()):
+    end = len(expr.rstrip())
+    while pos < end:
         m = TOKEN.match(expr, pos)
         if not m:
             raise SetError(f"式を読めない: {expr[pos:]!r}")
