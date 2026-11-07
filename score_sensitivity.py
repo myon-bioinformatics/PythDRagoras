@@ -179,7 +179,7 @@ def markdown(report: dict) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def main() -> None:
+def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--games", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
@@ -188,7 +188,7 @@ def main() -> None:
     parser.add_argument("--min-seasons", type=int, default=3)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--markdown", type=Path)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     config = tomllib.loads(args.config.read_text(encoding="utf-8"))
     team = args.team or config["focus"]["team"]
     if team not in config["teams"]:

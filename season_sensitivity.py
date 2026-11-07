@@ -300,14 +300,14 @@ def markdown(report):
     return '\n'.join(lines)+'\n'
 
 
-def main():
+def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--season', type=Path, required=True)
     p.add_argument('--additional-season', type=Path, action='append', default=[])
     p.add_argument('--config', type=Path, required=True)
     p.add_argument('--out', type=Path, required=True)
     p.add_argument('--markdown', type=Path)
-    args = p.parse_args()
+    args = p.parse_args(argv)
     sources = [args.season, *args.additional_season]
     rows = [json.loads(line) for path in sources for line in path.read_text(encoding='utf-8').splitlines() if line.strip()]
     report = analyze(rows, tomllib.loads(args.config.read_text(encoding='utf-8')))
