@@ -309,11 +309,11 @@ Measured on 6 kinds of 64x64 synthetic images. Tests use fixed seeds (11–16), 
 
 ## Node entry (Node 26+)
 
-- `node littlebit_survey.cjs <args>` runs `littlebit_survey.py` (interpreter override: `LITTLEBIT_SURVEY_PYTHON`).
-- `node season_sensitivity.cjs <args>` runs `season_sensitivity.py` (interpreter override: `SEASON_SENSITIVITY_PYTHON`).
-- `node score_sensitivity.cjs <args>` runs `score_sensitivity.py` (interpreter override: `SCORE_SENSITIVITY_PYTHON`).
+- `node vendor/py_launch.cjs --env-var LITTLEBIT_SURVEY_PYTHON -- littlebit_survey.py <args>`
+- `node vendor/py_launch.cjs --env-var SEASON_SENSITIVITY_PYTHON -- season_sensitivity.py <args>`
+- `node vendor/py_launch.cjs --env-var SCORE_SENSITIVITY_PYTHON -- score_sensitivity.py <args>`
 
-Each entry uses the vendored shared launcher `vendor/py_launch.cjs` (pinned in `vendor.lock.json`).
+There are no per-tool `.cjs` wrappers: each command calls the vendored shared launcher `vendor/py_launch.cjs` (pinned in `vendor.lock.json`) directly, and `--env-var` names the interpreter override. A Node older than 26 exits 2.
 Arguments, stdin/stdout/stderr and the exit code are passed through unchanged; Python runs with `-S`, including interpreter discovery.
 The launcher is copied from the merged [Aoi #149](https://github.com/myon-bioinformatics/Aoi/pull/149)
 commit `9e0147a17695ce63fa73daf75d8195a4f49095bb`, not directly from Aoi's parent.
