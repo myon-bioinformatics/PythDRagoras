@@ -2,8 +2,7 @@
 
 Aoi の場所は AOI_ROOT だけで渡す。sakanalytics への import 経路はここで作り、子プロセスにも PYTHONPATH で渡す。
 """
-import os
-import sys
+import os, sys
 from pathlib import Path
 
 import pytest

@@ -6,12 +6,8 @@ No standings, inning sequence, or downstream game decisions are simulated.
 """
 from __future__ import annotations
 
-import argparse
-from dataclasses import dataclass
-from datetime import date
-import json
-from pathlib import Path
-import tomllib
+import argparse, json, tomllib
+from dataclasses import dataclass; from datetime import date; from pathlib import Path
 
 
 @dataclass

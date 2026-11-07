@@ -1,6 +1,5 @@
 """Local rollout contract; adopted vendor locks are deliberately independent."""
-import json
-import re
+import json, re
 from pathlib import Path
 
 PARENT = "myon-bioinformatics/myon-bioinformatics"

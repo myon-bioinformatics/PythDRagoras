@@ -1,7 +1,4 @@
-import json
-import random
-import subprocess
-import sys
+import json, random, subprocess, sys
 from pathlib import Path
 import pytest
 from score_sensitivity import analyze, sweep, team_games
