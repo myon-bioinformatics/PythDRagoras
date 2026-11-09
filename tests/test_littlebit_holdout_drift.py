@@ -9,15 +9,8 @@ configuration and its frozen coefficients are not bitwise portable. No test
 updates the committed evidence. No scientific value, model coefficient, unit
 ID, flag, or new field is ignored.
 """
-from copy import deepcopy
-import difflib
-import hashlib
-import json
-import os
-from pathlib import Path
-import platform
-import time
-import warnings
+import difflib, hashlib, json, os, platform, time, warnings
+from copy import deepcopy; from pathlib import Path
 
 import pytest
 

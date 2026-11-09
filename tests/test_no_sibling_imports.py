@@ -4,8 +4,7 @@
 モジュール（Aoi の aoi_paths.py と同じ中身の aoi_paths.py を含む）だけ。既知の例外は KNOWN_EXCEPTIONS に (ファイル, 対象) で書く。
 例外が使われなくなったら、このテストが落ちるので消す。Aoi の pythdragoras/ でも同じ結果になる。
 """
-import ast
-import sys
+import ast, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]

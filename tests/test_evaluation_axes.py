@@ -1,8 +1,6 @@
 """Common diagnostics never replace the fixed proposition judgement."""
-from copy import deepcopy
-import json
-import math
-from pathlib import Path
+import json, math
+from copy import deepcopy; from pathlib import Path
 
 import polars as pl
 import pytest

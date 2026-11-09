@@ -24,10 +24,7 @@
 すべて覆う式を「通る」と書く。逆（後件なら式に入る）は求めない（後件に至る道筋は1つとは限らない）。
 """
 
-import json
-import re
-import sys
-import tomllib
+import json, re, sys, tomllib
 from pathlib import Path
 
 import polars as pl

@@ -1,15 +1,8 @@
 """Real-process regressions for the launcher inherited only from Aoi."""
 from __future__ import annotations
 
-import json
-import os
+import json, os, re, select, shutil, signal, subprocess, sys
 from pathlib import Path
-import re
-import select
-import shutil
-import signal
-import subprocess
-import sys
 
 import pytest
 
@@ -34,10 +27,15 @@ NODE = _node()
 pytestmark = pytest.mark.skipif(NODE is None, reason="Node 26+ not available (set NODE)")
 
 
-def _copy_entry(tmp_path: Path, tool: str) -> dict[str, str]:
+def _direct(tmp_path: Path, tool: str) -> list[str]:
+    """The documented command: node vendor/py_launch.cjs --env-var <TOOL>_PYTHON -- <tool>.py (no per-tool wrapper)."""
+    return [NODE, str(tmp_path / "vendor/py_launch.cjs"), "--env-var", f"{tool.upper()}_PYTHON", "--",
+            str(tmp_path / f"{tool}.py")]
+
+
+def _copy_launcher(tmp_path: Path, tool: str) -> dict[str, str]:
     (tmp_path / "vendor").mkdir()
     shutil.copyfile(ROOT / "vendor/py_launch.cjs", tmp_path / "vendor/py_launch.cjs")
-    shutil.copyfile(ROOT / f"{tool}.cjs", tmp_path / f"{tool}.cjs")
     env = dict(os.environ)
     env[f"{tool.upper()}_PYTHON"] = sys.executable
     env.pop("PY_LAUNCH_ERROR_FORMAT", None)
@@ -58,13 +56,13 @@ def _site_hook(tmp_path: Path, env: dict[str, str]) -> Path:
 
 @pytest.mark.parametrize("tool", ENTRIES)
 def test_every_entry_suppresses_site_during_discovery(tmp_path, tool):
-    env = _copy_entry(tmp_path, tool)
+    env = _copy_launcher(tmp_path, tool)
     marker = _site_hook(tmp_path, env)
     (tmp_path / f"{tool}.py").write_text(
         "import sys\nprint(sys.flags.no_site)\n", encoding="utf-8",
     )
     result = subprocess.run(
-        [NODE, str(tmp_path / f"{tool}.cjs")], cwd=tmp_path, env=env,
+        _direct(tmp_path, tool), cwd=tmp_path, env=env,
         capture_output=True, text=True, timeout=10,
     )
     assert not marker.exists(), "interpreter discovery must also use -S"
@@ -112,7 +110,7 @@ def _expect_line(process: subprocess.Popen, expected: bytes) -> None:
 @pytest.mark.parametrize("repetitions", [0, 2], ids=["direct", "repeated"])
 @pytest.mark.parametrize("error_format", ["text", "json"])
 def test_every_entry_forwards_acknowledged_signals(tmp_path, tool, ignored, terminal, repetitions, error_format):
-    env = _copy_entry(tmp_path, tool)
+    env = _copy_launcher(tmp_path, tool)
     env["PY_LAUNCH_ERROR_FORMAT"] = error_format
     (tmp_path / f"{tool}.py").write_text(
         "import signal, time\n"
@@ -125,7 +123,7 @@ def test_every_entry_forwards_acknowledged_signals(tmp_path, tool, ignored, term
         "    time.sleep(60)\n", encoding="utf-8",
     )
     process = subprocess.Popen(
-        [NODE, str(tmp_path / f"{tool}.cjs")], cwd=tmp_path, env=env,
+        _direct(tmp_path, tool), cwd=tmp_path, env=env,
         stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         start_new_session=True,
     )
