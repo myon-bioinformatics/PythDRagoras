@@ -1,15 +1,8 @@
 """Real-process regressions for the launcher inherited only from Aoi."""
 from __future__ import annotations
 
-import json
-import os
+import json, os, re, select, shutil, signal, subprocess, sys
 from pathlib import Path
-import re
-import select
-import shutil
-import signal
-import subprocess
-import sys
 
 import pytest
 

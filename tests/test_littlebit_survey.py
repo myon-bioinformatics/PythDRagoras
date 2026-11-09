@@ -1,10 +1,6 @@
 """littlebit_survey: 乗算・浮動小数なしのコア、FWHT の往復、シナリオごとの合格線（オフライン）。"""
 
-import ast
-import inspect
-import random
-import subprocess
-import sys
+import ast, inspect, random, subprocess, sys
 from pathlib import Path
 
 import pytest

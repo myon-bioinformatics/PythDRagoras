@@ -1,7 +1,5 @@
 """No evaluation row or label may change fitted operators or rule selection."""
-import itertools
-import hashlib
-import json
+import hashlib, itertools, json
 from pathlib import Path
 
 import numpy as np

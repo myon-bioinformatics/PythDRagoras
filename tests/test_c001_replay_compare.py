@@ -1,6 +1,5 @@
-import json
+import json, sys
 from pathlib import Path
-import sys
 
 import aoi_paths
 

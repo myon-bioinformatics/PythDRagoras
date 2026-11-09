@@ -39,10 +39,7 @@ proposition helpers are imported inside the functions that read a frame.
 
 from __future__ import annotations
 
-import argparse
-import json
-import sys
-import time
+import argparse, json, sys, time
 from pathlib import Path
 
 
