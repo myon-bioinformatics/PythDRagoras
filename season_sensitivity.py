@@ -6,14 +6,8 @@ Only threshold crossings update the confusion counts. Weights and rules are expl
 """
 from __future__ import annotations
 
-import argparse
-from collections import defaultdict
-from copy import deepcopy
-import hashlib
-import json
-import math
-from pathlib import Path
-import tomllib
+import argparse, hashlib, json, math, tomllib
+from collections import defaultdict; from copy import deepcopy; from pathlib import Path
 
 
 def finite(value):

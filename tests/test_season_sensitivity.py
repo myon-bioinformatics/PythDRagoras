@@ -1,10 +1,5 @@
-from copy import deepcopy
-import json
-import math
-from pathlib import Path
-import random
-import subprocess
-import sys
+import json, math, random, subprocess, sys
+from copy import deepcopy; from pathlib import Path
 
 import pytest
 from season_sensitivity import analyze, counts_metrics, prepare, shape, threshold_curve

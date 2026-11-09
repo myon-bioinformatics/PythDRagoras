@@ -1,10 +1,7 @@
 """Offline CI regression of the *exploratory*, unregistered Issue #9 candidates."""
 from __future__ import annotations
 
-import copy
-import importlib.util
-import hashlib
-import os
+import copy, hashlib, importlib.util, os
 from pathlib import Path
 import pytest
 

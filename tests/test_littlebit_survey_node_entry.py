@@ -1,13 +1,7 @@
 """Node entry parity with littlebit_survey.py, calling the vendored shared py_launch.cjs directly (no per-tool wrapper)."""
 from __future__ import annotations
 
-import hashlib
-import json
-import os
-import re
-import shutil
-import subprocess
-import sys
+import hashlib, json, os, re, shutil, subprocess, sys
 from pathlib import Path
 
 import pytest

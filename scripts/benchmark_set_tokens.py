@@ -1,12 +1,6 @@
 """python -S -m scripts.benchmark_set_tokens; isolates tokenizer from Polars."""
-import ast
-import json
+import ast, json, platform, re, statistics, subprocess, time
 from pathlib import Path
-import platform
-import re
-import statistics
-import subprocess
-import time
 
 BASELINE = '9fb998c6db1be112cacda5d5963b9b751fd3c4e4'
 
