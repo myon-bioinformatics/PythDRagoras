@@ -40,6 +40,19 @@ This repository was split out from the [Aoi](https://github.com/myon-bioinformat
 
 ## Installation and usage
 
+### Standalone classification metrics
+
+For domain-independent TP / FP / FN / TN counts, generate a stdlib-only `pythdragoras.py` from the canonical `propositions.py` implementation. It reports diagnostic metrics; it does not run the full proposition judgement.
+
+```bash
+python scripts/build_stdlib_tool.py build/pythdragoras-stdlib-tool
+python build/pythdragoras-stdlib-tool/pythdragoras.py 16 0 56 72
+uv tool install ./build/pythdragoras-stdlib-tool
+pythdragoras-metrics 16 0 56 72
+```
+
+Regenerate after changing the canonical implementation. Building the uv tool requires setuptools; the generated tool has no third-party runtime dependencies.
+
 Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/). The only runtime dependencies are polars and numpy (`pyproject.toml`; ortools is not used).
 
 ```bash
