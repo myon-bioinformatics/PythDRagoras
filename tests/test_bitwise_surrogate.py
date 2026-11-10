@@ -243,6 +243,65 @@ def test_a_false_positive_without_an_inhibitory_bit_is_not_applied():
     assert empty.evaluate_fast(0) is True
 
 
+def _random_rule(rng, width):
+    return bs.BitwiseSymbolicSurrogate(
+        rng.randrange(1 << width) & rng.randrange(1 << width),
+        tuple(rng.randrange(1, 1 << width) for _ in range(rng.randrange(3))),
+        rng.randrange(1 << width) & rng.randrange(1 << width),
+    )
+
+
+def test_rule_relations_match_exhaustive_enumeration():
+    """exclusive / implies / never are proofs: compare them with every row mask of a small width."""
+    seed = _seed()
+    rng = random.Random(seed)
+    width = 6
+    seen = set()
+    for _ in range(400):
+        a, b = _random_rule(rng, width), _random_rule(rng, width)
+        in_a = {x for x in range(1 << width) if a.evaluate_fast(x)}
+        in_b = {x for x in range(1 << width) if b.evaluate_fast(x)}
+        assert bs.satisfiable(a) is bool(in_a)
+        assert bs.implies(a, b) is (in_a <= in_b)
+        found = bs.rule_relation([a], [b])
+        seen.add(found["relation"])
+        if not in_a or not in_b:
+            assert found["relation"] == ("never_a" if not in_a else "never_b")
+        elif not in_a & in_b:
+            assert found == {"relation": "exclusive", "witness": None}
+        else:
+            assert found["witness"] in in_a & in_b
+            expected = ("equivalent" if in_a == in_b else "a_implies_b" if in_a <= in_b
+                        else "b_implies_a" if in_b <= in_a else "overlap")
+            assert found["relation"] == expected
+    assert {"exclusive", "overlap"} <= seen
+
+
+def test_a_rule_inside_another_and_a_rule_that_cannot_hold_are_named_not_patched():
+    """The two inputs where the external pairwise check went wrong (an index of -1, a witness for a dead rule)."""
+    narrow, wide = bs.BitwiseSymbolicSurrogate(0b0111), bs.BitwiseSymbolicSurrogate(0b0011)
+    before = (narrow.describe(), wide.describe())
+    assert bs.rule_relation([narrow], [wide])["relation"] == "a_implies_b"
+    assert (narrow.describe(), wide.describe()) == before
+    dead = bs.BitwiseSymbolicSurrogate(0b0001, (), 0b0001)
+    assert bs.rule_relation([dead], [wide]) == {"relation": "never_a", "witness": None}
+    assert bs.witness(bs.BitwiseSymbolicSurrogate(0, (0b0110,), 0b0110)) is None
+
+
+def test_audit_counts_what_the_rows_show_and_what_no_rule_covers():
+    a, b, c = bs.BitwiseSymbolicSurrogate(0b001), bs.BitwiseSymbolicSurrogate(0b010), bs.BitwiseSymbolicSurrogate(0b001, (), 0b010)
+    rows = [0b001, 0b001, 0b010, 0b100]
+    report = bs.audit_rules([("a", [a]), ("b", [b]), ("c", [c])], rows)
+    by = {(pair["a"], pair["b"]): pair for pair in report["pairs"]}
+    assert by[("a", "b")]["relation"] == "overlap"  # the masks allow 0b011, the rows never show it
+    assert by[("a", "b")]["observed"] == {"both": 0, "a_only": 2, "b_only": 1, "neither": 1}
+    assert by[("b", "c")]["relation"] == "exclusive" and by[("b", "c")]["observed"]["both"] == 0
+    assert by[("a", "c")]["relation"] == "b_implies_a"
+    assert (report["uncovered_rows"], report["rows"]) == (1, 4)
+    general = bs.rule_relation([a, b], [bs.BitwiseSymbolicSurrogate(0, (0b011,))])
+    assert general["relation"] == "a_implies_b"  # term by term: equivalence of a general OR is not searched for
+
+
 def test_module_imports_under_python_s_and_stays_free_of_py310_syntax():
     completed = subprocess.run(
         [sys.executable, "-S", "-c", "import bitwise_surrogate"],
