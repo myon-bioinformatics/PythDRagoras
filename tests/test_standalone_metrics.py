@@ -12,7 +12,7 @@ class StandaloneMetricsTest(unittest.TestCase):
     def test_generated_script_metrics_and_input_errors(self):
         with tempfile.TemporaryDirectory() as temp:
             target = Path(temp) / "tool"
-            subprocess.run([sys.executable, str(ROOT / "scripts/build_stdlib_tool.py"), str(target)], check=True)
+            subprocess.run([sys.executable, str(ROOT / "build_stdlib_tool.py"), str(target)], check=True)
             script = target / "pythdragoras.py"
             result = subprocess.run([sys.executable, "-I", str(script), "16", "0", "56", "72"],
                                     capture_output=True, text=True, cwd=temp)

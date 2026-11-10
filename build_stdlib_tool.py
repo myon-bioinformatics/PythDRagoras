@@ -3,7 +3,7 @@ import argparse
 import ast
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parent
 PYPROJECT = '''[build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"

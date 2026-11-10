@@ -45,7 +45,7 @@ This repository was split out from the [Aoi](https://github.com/myon-bioinformat
 For domain-independent TP / FP / FN / TN counts, generate a stdlib-only `pythdragoras.py` from the canonical `propositions.py` implementation. It reports diagnostic metrics; it does not run the full proposition judgement.
 
 ```bash
-python scripts/build_stdlib_tool.py build/pythdragoras-stdlib-tool
+python build_stdlib_tool.py build/pythdragoras-stdlib-tool
 python build/pythdragoras-stdlib-tool/pythdragoras.py 16 0 56 72
 uv tool install ./build/pythdragoras-stdlib-tool
 pythdragoras-metrics 16 0 56 72
