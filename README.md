@@ -53,6 +53,19 @@ pythdragoras-metrics 16 0 56 72
 
 Regenerate after changing the canonical implementation. Building the uv tool requires setuptools; the generated tool has no third-party runtime dependencies.
 
+The four positional inputs are true positives, false positives, false negatives, and true negatives, in that order. After installation:
+
+```bash
+pythdragoras-metrics 16 0 56 72
+# JSON includes n=144, precision=1.0, recall=0.2222222222222222
+pythdragoras-metrics 0 0 0 0
+# JSON metrics that have no denominator are null; none_reasons explains why
+pythdragoras-metrics -1 0 0 0
+# Error: counts must be nonnegative integers; exit 2
+```
+
+Without installation, use the same arguments with `python build/pythdragoras-stdlib-tool/pythdragoras.py`. This computes diagnostics only; proposition files, counterexample evaluation and full reports use the existing application described below.
+
 Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/). The only runtime dependencies are polars and numpy (`pyproject.toml`; ortools is not used).
 
 ```bash
