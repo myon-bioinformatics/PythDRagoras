@@ -40,6 +40,32 @@ This repository was split out from the [Aoi](https://github.com/myon-bioinformat
 
 ## Installation and usage
 
+### Standalone classification metrics
+
+For domain-independent TP / FP / FN / TN counts, generate a stdlib-only `pythdragoras.py` from the canonical `propositions.py` implementation. It reports diagnostic metrics; it does not run the full proposition judgement.
+
+```bash
+python build_stdlib_tool.py build/pythdragoras-stdlib-tool
+python build/pythdragoras-stdlib-tool/pythdragoras.py 16 0 56 72
+uv tool install ./build/pythdragoras-stdlib-tool
+pythdragoras-metrics 16 0 56 72
+```
+
+Regenerate after changing the canonical implementation. Building the uv tool requires setuptools; the generated tool has no third-party runtime dependencies.
+
+The four positional inputs are true positives, false positives, false negatives, and true negatives, in that order. After installation:
+
+```bash
+pythdragoras-metrics 16 0 56 72
+# JSON includes n=144, precision=1.0, recall=0.2222222222222222
+pythdragoras-metrics 0 0 0 0
+# JSON metrics that have no denominator are null; none_reasons explains why
+pythdragoras-metrics -1 0 0 0
+# Error: counts must be nonnegative integers; exit 2
+```
+
+Without installation, use the same arguments with `python build/pythdragoras-stdlib-tool/pythdragoras.py`. This computes diagnostics only; proposition files, counterexample evaluation and full reports use the existing application described below.
+
 Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/). The only runtime dependencies are polars and numpy (`pyproject.toml`; ortools is not used).
 
 ```bash
@@ -321,3 +347,19 @@ SIGINT and SIGTERM continue to be forwarded while the Python child is alive, eve
 Launcher failures (no Python 3.9+, spawn error, signal) exit 2. Set `PY_LAUNCH_ERROR_FORMAT=json` for a single structured error on stderr; signal failures report the signal that actually terminated the child.
 
 Regression tests cover every thin entry with acknowledged repeated signals, text/JSON errors, and a hostile `sitecustomize` hook. They also test `noSite` and `isolated` discovery independently without changing the entries' `noSite: true` configuration or the Node 26+ floor.
+
+### 軽量な単一ファイル版の利用例（生成後）
+
+Python 3.11 以上で次を実行します。生成先は存在しないディレクトリを指定します。
+
+```sh
+python build_stdlib_tool.py /tmp/pythdragoras-tool
+python /tmp/pythdragoras-tool/pythdragoras.py metrics --tp 80 --fp 10 --fn 20 --tn 90
+python /tmp/pythdragoras-tool/pythdragoras.py bayes --prior 0.01 --sensitivity 0.9 --specificity 0.95
+python /tmp/pythdragoras-tool/pythdragoras.py expected 10 0.25 20 0.75
+python /tmp/pythdragoras-tool/pythdragoras.py pythagorean --for 80 --against 60
+```
+
+JSONの `accuracy` は 0.85、`precision` は約 0.889、`recall` は 0.8、`f1` は約 0.842 です。ベイズの `posterior` は約 0.154、期待勝率は 0.64 です。定義できない値は `null` と理由で返します。ピタゴラス期待値の指数は `--exponent` で指定でき、省略時は 2 です。
+
+生成したディレクトリを使い `uv tool install /tmp/pythdragoras-tool` で登録すると、`pythdragoras --help` から同じ機能を利用できます。単一ファイルの実行時に外部ライブラリは不要です。生成とインストールにはそれぞれリポジトリとビルド環境が必要です。

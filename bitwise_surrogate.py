@@ -286,7 +286,11 @@ def _both(a, b):
 
 
 def witness(rule):
-    """The smallest-index row mask that satisfies the rule, or None. A mask, not an observed row."""
+    """A deterministic satisfying mask, or None; not necessarily the smallest mask.
+
+    Uses the given clause order and each unmet clause's lowest allowed bit.
+    This is a mask, not an observed row.
+    """
     if not satisfiable(rule):
         return None
     x = rule.m_and

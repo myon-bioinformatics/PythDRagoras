@@ -288,6 +288,15 @@ def test_a_rule_inside_another_and_a_rule_that_cannot_hold_are_named_not_patched
     assert bs.witness(bs.BitwiseSymbolicSurrogate(0, (0b0110,), 0b0110)) is None
 
 
+def test_witness_is_valid_but_does_not_claim_the_smallest_mask():
+    rule = bs.BitwiseSymbolicSurrogate(0, (0b11, 0b10))
+    found = bs.witness(rule)
+    assert found == 0b11
+    assert rule.evaluate_fast(found)
+    assert rule.evaluate_fast(0b10)  # A smaller valid mask need not be selected.
+    assert bs.witness(rule) == found
+
+
 def test_audit_counts_what_the_rows_show_and_what_no_rule_covers():
     a, b, c = bs.BitwiseSymbolicSurrogate(0b001), bs.BitwiseSymbolicSurrogate(0b010), bs.BitwiseSymbolicSurrogate(0b001, (), 0b010)
     rows = [0b001, 0b001, 0b010, 0b100]
