@@ -35,3 +35,27 @@ class StandaloneExamples(unittest.TestCase):
         self.assertAlmostEqual(self.call("pythagorean", "--for", "80", "--against", "60")["expectation"], .64)
         self.assertIsNone(self.call("pythagorean", "--for", "0", "--against", "0")["expectation"])
         self.assertEqual(self.run_cli("bayes", "--prior", "nan", "--sensitivity", ".9", "--specificity", ".95").returncode, 2)
+
+    def test_bayes_tiny_positive_probabilities_are_not_impossible(self):
+        for prior, sensitivity in (("1e-200", "1e-200"), ("5e-324", ".5")):
+            with self.subTest(prior=prior, sensitivity=sensitivity):
+                result = self.call("bayes", "--prior", prior, "--sensitivity", sensitivity,
+                                   "--specificity", "1")
+                self.assertEqual(result, {"posterior": 1.0, "none_reason": None})
+        # Both causes are possible; avoid rounding the true-positive product
+        # to zero before dividing by a small false-positive probability.
+        result = self.call("bayes", "--prior", "5e-324", "--sensitivity", ".5",
+                           "--specificity", "0.9999999999999999")
+        self.assertAlmostEqual(result["posterior"] / 2.2250738585072014e-308, 1.0)
+        self.assertIsNone(result["none_reason"])
+
+    def test_bayes_boundary_probabilities_and_impossible_results(self):
+        for prior, sensitivity, specificity, posterior in (
+            (0, 1, 0, 0.0), (1, 1, 0, 1.0), (.5, 0, 0, 0.0),
+            (.5, 1, 1, 1.0), (0, 1, 1, None), (1, 0, 0, None), (.5, 0, 1, None),
+        ):
+            with self.subTest(prior=prior, sensitivity=sensitivity, specificity=specificity):
+                result = self.call("bayes", "--prior", str(prior), "--sensitivity", str(sensitivity),
+                                   "--specificity", str(specificity))
+                self.assertEqual(result, {"posterior": posterior, "none_reason":
+                    "positive_result_has_zero_probability" if posterior is None else None})

@@ -62,9 +62,21 @@ def main(argv=None):
         prior, sensitivity, specificity = args.prior, args.sensitivity, args.specificity
         if any(not math.isfinite(x) or not 0 <= x <= 1 for x in (prior, sensitivity, specificity)):
             parser.error("probabilities must be finite and between 0 and 1")
-        positive = prior * sensitivity + (1 - prior) * (1 - specificity)
-        result = {"posterior": prior * sensitivity / positive if positive else None,
-                  "none_reason": None if positive else "positive_result_has_zero_probability"}
+        # Test mathematical zero before multiplication: valid tiny probabilities
+        # can otherwise underflow and be mistaken for an impossible result.
+        true_possible = prior > 0 and sensitivity > 0
+        false_possible = prior < 1 and specificity < 1
+        if true_possible and false_possible:
+            log_true = math.log(prior) + math.log(sensitivity)
+            log_false = math.log1p(-prior) + math.log1p(-specificity)
+            scale = max(log_true, log_false)
+            true_weight = math.exp(log_true - scale)
+            false_weight = math.exp(log_false - scale)
+            posterior = true_weight / (true_weight + false_weight)
+        else:
+            posterior = float(true_possible) if true_possible or false_possible else None
+        result = {"posterior": posterior,
+                  "none_reason": "positive_result_has_zero_probability" if posterior is None else None}
     elif args.command == "expected":
         pairs = args.pairs
         if len(pairs) % 2 or any(not math.isfinite(x) for x in pairs):
