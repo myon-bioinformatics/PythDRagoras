@@ -29,6 +29,15 @@ individually inhibitory, the function returns that NOT condition as a new
 proposition to test. A bit that does not by itself remove the false
 positive is not proposed.
 
+``rule_relation`` and ``audit_rules`` compare rules with each other: can two
+rules hold on the same row, does one contain the other, can a rule hold at
+all. ``exclusive``, ``implies`` and ``never`` are proofs over the masks, so
+they hold for every row. ``overlap`` only says the masks allow a common row;
+conditions on one column are not independent (``x < 0`` and ``x > 1``), so
+the witness may be a row that cannot exist. The observed counts say what
+the data shows. Nothing is repaired: a rule inside another rule is a
+finding to read, not a conflict to patch.
+
 The false-negative edit that relaxed a lost AND bit into an OR clause was
 removed. Measured reasons are in ``docs/bitwise-surrogate-repair.md``.
 
@@ -263,6 +272,121 @@ def suggest_not_proposition(rule, x, oracle, names=None):
             "rule": suggested.describe(),
         },
     }
+
+
+def satisfiable(rule):
+    """False when no row can satisfy the rule: a required bit is forbidden, or an OR clause is all forbidden."""
+    if rule.m_and & rule.m_not:
+        return False
+    return all(clause & ~rule.m_not for clause in rule.or_clauses)
+
+
+def _both(a, b):
+    return BitwiseSymbolicSurrogate(a.m_and | b.m_and, tuple(a.or_clauses) + tuple(b.or_clauses), a.m_not | b.m_not)
+
+
+def witness(rule):
+    """A deterministic satisfying mask, or None; not necessarily the smallest mask.
+
+    Uses the given clause order and each unmet clause's lowest allowed bit.
+    This is a mask, not an observed row.
+    """
+    if not satisfiable(rule):
+        return None
+    x = rule.m_and
+    for clause in rule.or_clauses:
+        if not x & clause:
+            allowed = clause & ~rule.m_not
+            x |= allowed & -allowed
+    return x
+
+
+def implies(a, b):
+    """True when every row mask that satisfies ``a`` satisfies ``b`` (exact for this fragment)."""
+    if not satisfiable(a):
+        return True
+    forced = a.m_and  # required bits, plus an OR clause left with a single allowed bit
+    for own in a.or_clauses:
+        allowed = own & ~a.m_not
+        if allowed & (allowed - 1) == 0:
+            forced |= allowed
+    if (b.m_and & forced) != b.m_and or (b.m_not & a.m_not) != b.m_not:
+        return False
+    for clause in b.or_clauses:  # forced by a required bit, or by an OR clause of a whose allowed bits lie inside it
+        if clause & forced:
+            continue
+        if not any((own & ~a.m_not & ~clause) == 0 for own in a.or_clauses):
+            return False
+    return True
+
+
+def rule_relation(a_terms, b_terms):
+    """Relation of two rules, each a list of surrogates joined by OR (one surrogate for a plain rule).
+
+    never_a / never_b : that rule cannot hold on any row.
+    exclusive         : no row satisfies both (proof).
+    equivalent / a_implies_b / b_implies_a : containment (proof; between two general ORs it is
+                        checked term by term, so a containment that needs several terms together
+                        is reported as overlap).
+    overlap           : the masks allow a common row; ``witness`` is one such mask.
+    """
+    a_live = [t for t in a_terms if satisfiable(t)]
+    b_live = [t for t in b_terms if satisfiable(t)]
+    if not a_live or not b_live:
+        return {"relation": "never_a" if not a_live else "never_b", "witness": None}
+    joint = None
+    for a in a_live:
+        for b in b_live:
+            joint = witness(_both(a, b))
+            if joint is not None:
+                break
+        if joint is not None:
+            break
+    if joint is None:
+        return {"relation": "exclusive", "witness": None}
+    forward = all(any(implies(a, b) for b in b_live) for a in a_live)
+    backward = all(any(implies(b, a) for a in a_live) for b in b_live)
+    relation = ("equivalent" if forward and backward else "a_implies_b" if forward
+                else "b_implies_a" if backward else "overlap")
+    return {"relation": relation, "witness": joint}
+
+
+def audit_rules(rules, rows=None):
+    """Every pair of ``rules`` ([(label, [surrogate, ...]), ...]) with its relation and, given row masks, what was seen.
+
+    ``rows`` are null-free feature masks (``FeatureRows.masks``). ``observed`` counts rows where both,
+    only the first, only the second, or neither rule holds; ``neither`` over all rules is the uncovered
+    part of the data, not a proof that the rules leave a hole.
+    """
+    def holds(terms, x):
+        return any(term.evaluate_fast(x) for term in terms)
+
+    pairs = []
+    for i, (a_label, a_terms) in enumerate(rules):
+        for b_label, b_terms in rules[i + 1:]:
+            found = rule_relation(a_terms, b_terms)
+            found.update(a=a_label, b=b_label)
+            if rows is not None:
+                seen = {"both": 0, "a_only": 0, "b_only": 0, "neither": 0}
+                for x in rows:
+                    in_a, in_b = holds(a_terms, x), holds(b_terms, x)
+                    seen["both" if in_a and in_b else "a_only" if in_a else "b_only" if in_b else "neither"] += 1
+                found["observed"] = seen
+            pairs.append(found)
+    report = {"pairs": pairs}
+    if rows is not None:
+        report["uncovered_rows"] = sum(not any(holds(terms, x) for _label, terms in rules) for x in rows)
+        report["rows"] = len(rows)
+    return report
+
+
+def search_rule_terms(groups, conditions):
+    """``rule_search`` groups as a list of surrogates (one per conjunction), or None for an unknown condition."""
+    whole = compile_search_rule(groups, conditions)
+    if whole is not None:
+        return [whole]
+    terms = [compile_search_rule([group], conditions) for group in groups or []]
+    return None if not terms or any(term is None for term in terms) else terms
 
 
 def _suggestion(supported, reason, probes, bit, judged_rule):
@@ -726,6 +850,8 @@ def main(argv=None):
     )
     parser.add_argument("--aoi-root", type=Path, required=True)
     parser.add_argument("--top", type=int, default=20)
+    parser.add_argument("--audit", action="store_true",
+                        help="print how the returned rules relate (exclusive / implies / overlap) and what the rows show")
     args = parser.parse_args(argv)
     import rule_search
 
@@ -756,6 +882,26 @@ def main(argv=None):
     print("proposition_terms %s" % _format_seconds(report["term_proposition"]))
     print("row_bitset_terms %s" % _format_seconds(report["term_row_bitset"]))
     print("rule_search %s" % _format_seconds(report["rule_search"]))
+    if args.audit:
+        labelled = [(format_search_rule(rule["if_any"], loaded["candidates"]), search_rule_terms(rule["if_any"], loaded["candidates"]))
+                    for rule in rules]
+        packed = pack_feature_rows(loaded["frame"], loaded["candidates"])
+        audit = audit_rules([item for item in labelled if item[1] is not None], packed.masks)
+        tally = {}
+        for pair in audit["pairs"]:
+            tally[pair["relation"]] = tally.get(pair["relation"], 0) + 1
+        print("audit pairs=%d %s uncovered_rows=%d/%d" % (
+            len(audit["pairs"]), " ".join("%s=%d" % item for item in sorted(tally.items())),
+            audit["uncovered_rows"], audit["rows"]))
+        unseen = [pair for pair in audit["pairs"] if pair["relation"] == "overlap" and pair["observed"]["both"] == 0]
+        print("audit overlap_allowed_by_masks_but_never_observed=%d" % len(unseen))
+        same = [pair for pair in audit["pairs"] if not pair["observed"]["a_only"] and not pair["observed"]["b_only"]]
+        print("audit pairs_identical_on_every_row=%d" % len(same))
+        for pair in audit["pairs"]:
+            if pair["relation"] != "overlap":
+                print("audit %s: %s | %s  observed both=%d a_only=%d b_only=%d" % (
+                    pair["relation"], pair["a"], pair["b"], pair["observed"]["both"],
+                    pair["observed"]["a_only"], pair["observed"]["b_only"]))
     return 0 if report["flags_equal"] and report["counts_equal"] and report["term_flags_equal"] else 1
 
 

@@ -50,6 +50,35 @@ Rechecking the returned rules is about 3.3× the proposition antecedent (9.74 / 
 AOI_ROOT=/path/to/Aoi python bitwise_surrogate.py --aoi-root /path/to/Aoi
 ```
 
+## How two rules relate
+
+`rule_relation(a_terms, b_terms)` and `audit_rules(rules, rows)` compare rules with each other. A rule is a list of surrogates joined by OR (`search_rule_terms` builds it from `rule_search` groups).
+
+| Result | Meaning | Kind |
+|---|---|---|
+| `never_a` / `never_b` | the rule cannot hold on any row (a required bit is forbidden, or an OR clause is all forbidden) | proof |
+| `exclusive` | no row satisfies both | proof |
+| `equivalent` / `a_implies_b` / `b_implies_a` | one rule contains the other | proof (between two general ORs: term by term) |
+| `overlap` | the masks allow a common row; `witness` is one such mask | not a proof about data |
+
+A proof holds for every row, seen or not. `overlap` does not: the bits are conditions on shared columns (`sim_p_upper < 0.4` and `sim_p_upper < 0.5`), so a mask the algebra allows may be a row that cannot exist, and a containment that follows from the thresholds is not found. `observed` therefore counts, on the given rows, where both, only one, or neither rule holds; `uncovered_rows` is the part of the data no rule reaches. Neither is a claim about rows that were not observed. Nothing is edited: a rule inside another rule is reported, not patched.
+
+On the registered search (Python 3.14.10, Linux 6.18.44, x86_64; 156 team-seasons, 17 candidates, the 20 returned rules, 190 pairs; seven repeats):
+
+| Finding | Count |
+|---|---:|
+| containment proven (`a_implies_b` 4, `b_implies_a` 12) | 16 |
+| `exclusive`, `never` | 0 |
+| `overlap` | 174 (none unobserved: every pair shares at least one row) |
+| pairs that hold on exactly the same rows | 29 |
+| rows none of the 20 rules holds on | 64 of 156 |
+
+So the top 20 are not 20 different statements: 29 pairs cannot be told apart on this data, and 12 of the proven containments have no row on either side only. Proofs for the 190 pairs take 0.93 ms (min 0.91, max 0.93); with the row counts 23.6 ms (min 20.6, max 24.0).
+
+```bash
+AOI_ROOT=/path/to/Aoi python bitwise_surrogate.py --aoi-root /path/to/Aoi --audit
+```
+
 ## NOT as a proposition to test
 
 `suggest_not_proposition(rule, x, oracle)` is for one row the rule accepts and the oracle rejects. It binary-searches extra bits (`X & ~M_AND`), low index to high. If `oracle(X ^ left_half)` is true, the inhibitory bit is taken to lie in that half. The surviving bit is proposed only when flipping that bit alone makes the oracle true. The proposal is a new rule text from `format_current_rule` (the old literals, plus `NOT` of that condition). The masks of the rule under test are the same after the call, and `evaluate_fast` on that row is still true.
@@ -77,3 +106,20 @@ Claimed illustrations that this repo did not reproduce: feature-shift 42.5% → 
 Nothing in this repository, in Aoi's LittleBit holdout (that "drift" is a SHA-256 change), or in Ironmate (pixel occupancy masks and frozen image surveys) was this repair. There was no canonical copy to vendor.
 
 Tests draw `secrets.randbits(63)` when they randomize and emit `bitwise_surrogate seed=...`. They assert exact agreement where the two evaluators, or the decoy predicate and the suggestion, are the same function. They do not assert 68.5, 99.6, 42.5, 99.2, 58, 3 queries, 2.2 ms, or 2–8 µs.
+
+
+## External "Layer 23–26" proposal: what was taken
+
+Four later scripts (64-bit graph products, a two-level 64-node graph, a one-step minimax, a hazard-avoiding bit-flip path, a pairwise rule check) were run as given and then with inputs chosen to break them. Taken: the pairwise rule check, rebuilt as the section above. The rest is not in this repository.
+
+| Proposal | Checked here | Decision |
+|---|---|---|
+| Pairwise exclusivity with a witness and an automatic patch (L26) | The exclusivity test is right for required/forbidden masks. It ignores OR clauses, reports a "conflict" with a witness for a rule that can never hold, calls a rule inside another rule a bug, and its patch names bit `F_-1` when one rule's required bits lie inside the other's. | Taken without the patch: `rule_relation`, exact for this fragment including OR clauses, checked against every mask of a 6-bit width |
+| Hazard-avoiding one-bit-per-step path (L26) | A plain breadth-first search over states; correct on its example. 18.4 µs on that 4-bit example, 412 ms at 16 bits with 20,000 hazards; the visited set is one `2^N`-bit integer. | Not taken: no record here is a sequence of chosen bit flips, and team-seasons are not rewritten |
+| One-step minimax "unbeatable" board (L25) | On its own example the minimax board equals the greedy board and the guaranteed score is 0. On 1,000 random boards the two differ in 90, and the guaranteed score is negative in 289. | Not taken: no payoff function or opponent exists in the data |
+| Majority of three masks (L25) | `(a&b)|(b&c)|(c&a)` is the bitwise majority. | Not taken yet: there are no three independently searched rule sets to merge. Year blocks would be the first use |
+| 8×8 graph in one 64-bit integer, 3-cycles, chain breaker (L23) | Products and the example are right. A self-loop is reported as a "3-cycle". The chain breaker looks three hops ahead, so with a five-hop bypass it still names a node whose removal stops nothing. Python ints are unbounded, so one row mask per node does the same for any node count. | Not taken: head-to-head cycles would be a new indicator, which is for SakAnalytics to decide |
+| Two-level 64-node graph (L24) | Reachability on the example is right; the "cells evaluated" figure counts loop passes (2), not cells (3). | Not taken: no graph in this repository needs it |
+| Conservation lock (L23) | The velocity swap already conserves the sum; the correction adds the difference to the first particle and never fires in the example. | Not taken |
+
+Timings in the proposal were not reproduced: 0.38–1.65 µs claimed; measured 11 µs (graph analysis), 18.4 µs (path), 96 µs (minimax) for the same examples on this host. The accuracy tables (for example 66.7% → 100%, 48.0% → 99.5%) have no generating code in the scripts, so there was nothing to rerun; no test asserts them.
