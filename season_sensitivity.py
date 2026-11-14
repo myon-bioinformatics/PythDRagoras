@@ -6,7 +6,7 @@ Only threshold crossings update the confusion counts. Weights and rules are expl
 """
 from __future__ import annotations
 
-import argparse, hashlib, json, math, tomllib
+import argparse, hashlib, json, math, os, sys, tomllib
 from collections import defaultdict; from copy import deepcopy; from pathlib import Path
 
 
@@ -319,9 +319,19 @@ def main(argv=None):
         args.markdown.parent.mkdir(parents=True, exist_ok=True)
         args.markdown.write_text(markdown(report), encoding='utf-8')
         written.append(args.markdown)
+    def is_stdout(path):
+        try:
+            return os.path.samestat(path.stat(), os.fstat(sys.stdout.fileno()))
+        except (OSError, ValueError):
+            return False
+
+    # Device aliases can target a pipe or a regular file. Keep report bytes clean
+    # in either case; only move notices when a report explicitly targets stdout.
+    stdout_paths = {path for path in written if is_stdout(path)}
+    notices = sys.stderr if stdout_paths else sys.stdout
     for path in written:
-        if path.is_file():  # /dev/stdout などはリンクにしない
-            print(f'📄 {path.resolve().as_uri()} {path.stat().st_size} B')
+        if path not in stdout_paths and path.is_file():
+            print(f'📄 {path.resolve().as_uri()} {path.stat().st_size} B', file=notices)
 
 
 if __name__ == '__main__':

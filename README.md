@@ -242,7 +242,7 @@ python -S pythdragoras/season_sensitivity.py \
   --markdown cycles/c001-chunichi/outputs/season_sensitivity.md
 ```
 
-`--season` defaults to `outputs/season.jsonl` of the cycle that holds `--config`. Written files are printed as `file://` links (📄).
+`--season` defaults to `outputs/season.jsonl` of the cycle that holds `--config`. Written files are printed as `file://` links (📄). If an explicit output targets stdout (for example `/dev/stdout`), links for other files go to stderr so the report stream remains clean.
 Without `--out` and `--markdown`, the Markdown report goes to standard output and nothing is written.
 
 It sets `x + weight × y >= threshold` and computes sensitivity curves with one side fixed.
