@@ -2,7 +2,7 @@
 
 Builds latent patterns from candidate condition masks and adds them to PythDRagoras's candidate conditions. The shared identifier is `littlebit-approx`.
 
-Holds and failures are judged by the bit operations of [rule_search.py](../rule_search.py). Factors are computed with `littlebit` in [littlebit_prune.py](../littlebit_prune.py) (low rank, binarization by sign, row, column, and latent scales, residual stages). The official LittleBit kernel is not used.
+Holds and failures are judged by the bit operations of [core/rule_search.py](../rule_search.py). Factors are computed with `littlebit` in [core/littlebit_prune.py](../littlebit_prune.py) (low rank, binarization by sign, row, column, and latent scales, residual stages). The official LittleBit kernel is not used.
 
 ## Matrix
 
@@ -50,7 +50,7 @@ Each derived candidate has the following.
 - `rank`, `seed`, `stage`, `pattern`
 - `bundle`: the original conditions (`col`, `op`, `value`) and `weight`
 - `posthoc` = true, `exploratory` = true
-- `registration`: the result of `classify` in [registration_audit.py](../registration_audit.py)
+- `registration`: the result of `classify` in [core/registration_audit.py](../registration_audit.py)
 
 This construction produces conditions after seeing results, so `classify` returns posthoc. `exploratory` marks it as exploration; it does not add a further value to posthoc / preregistered / unknown. Making it pre-registered requires evidence recorded before evaluation, as in [registration-metadata-audit.md](../../docs/registration-metadata-audit.md). No such evidence is attached here.
 
@@ -69,7 +69,7 @@ For c001, the top results from passing only existing candidates to `search` and 
 Confirmation records are in [confirmation.md](../../cycles/c001-chunichi/outputs/confirmation.md). The candidate file is [rule_candidates.toml](../../cycles/c001-chunichi/rule_candidates.toml). Regenerate with:
 
 ```bash
-uv run python pythdragoras/littlebit_approx.py --cycle-dir cycles/c001-chunichi
+uv run python pythdragoras/core/littlebit_approx.py --cycle-dir cycles/c001-chunichi
 ```
 
 ## Fit/transform split by year
@@ -78,7 +78,7 @@ uv run python pythdragoras/littlebit_approx.py --cycle-dir cycles/c001-chunichi
 Column weights `bundle` alone don't determine `h` and `Us` for unknown rows, i.e. the sign of `F`.
 Redoing SVD/ALS including unknown rows also moves the learned axes and conditions, so it isn't an independent evaluation.
 
-[littlebit_holdout.py](../littlebit_holdout.py) implements **a different candidate generation method** that avoids this constraint.
+[core/littlebit_holdout.py](../littlebit_holdout.py) implements **a different candidate generation method** that avoids this constraint.
 
 1. Pass only the training years' candidate condition matrix to `littlebit`, and fix the per-stage column factors `W = Vs * g`.
 2. At each stage, `Z = R @ pinv(W.T)`, and the next stage's input is `R - Z @ W.T`. The pseudo-inverse cutoff is `rcond=1e-12`.
@@ -91,7 +91,7 @@ The saved encoder/decoder and formulas can be reloaded from JSON, and at evaluat
 Passing an old `loading_units` to `transform` is rejected.
 
 ```bash
-uv run python pythdragoras/littlebit_holdout.py --cycle-dir cycles/c001-chunichi
+uv run python pythdragoras/core/littlebit_holdout.py --cycle-dir cycles/c001-chunichi
 ```
 
 The default block comparison is training 2012–2022 and evaluation 2023–2025. The auxiliary walk-forward starts from the first 5 years,

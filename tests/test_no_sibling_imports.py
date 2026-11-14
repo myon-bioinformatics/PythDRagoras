@@ -23,6 +23,9 @@ KNOWN_EXCEPTIONS = {
     # Aoi の scripts/compare_c001_replay.py を AOI_ROOT から読む
     ("tests/test_c001_replay_compare.py", "import:compare_c001_replay"),
     ("tests/test_c001_replay_compare.py", "path:scripts"),
+    # このリポジトリ自身の scripts/build_stdlib_tool.py（Aoi の scripts/ ではない）
+    ("tests/test_standalone_examples.py", "path:scripts"),
+    ("tests/test_standalone_metrics.py", "path:scripts"),
     # Aoi の scripts/check_c001_exploratory_candidates.py を importlib で読む
     ("tests/test_c001_exploratory_candidates.py", "path:scripts/check_c001_exploratory_candidates.py"),
 }
@@ -37,7 +40,7 @@ def _sources():
 
 
 def _local_modules():
-    return {p.stem for p in ROOT.glob("*.py")} | {p.stem for p in (ROOT / "tests").glob("*.py")}
+    return {p.stem for d in (".", "core", "npb", "tests") for p in (ROOT / d).glob("*.py")}
 
 
 def _uses(tree):
@@ -76,7 +79,7 @@ def test_known_exceptions_are_still_used():
 def test_aoi_layout_shim_is_gone():
     assert not (ROOT / "aoi_layout.py").exists()
     for name in ("littlebit_approx.py", "littlebit_holdout.py"):
-        tree = ast.parse((ROOT / name).read_text(encoding="utf-8"), filename=name)
+        tree = ast.parse((ROOT / "core" / name).read_text(encoding="utf-8"), filename=name)
         imported = [alias.name.split(".")[0] for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names]
         imported += [node.module.split(".")[0] for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module]
         assert "aoi_layout" not in imported

@@ -314,10 +314,10 @@ def test_audit_counts_what_the_rows_show_and_what_no_rule_covers():
 def test_module_imports_under_python_s_and_stays_free_of_py310_syntax():
     completed = subprocess.run(
         [sys.executable, "-S", "-c", "import bitwise_surrogate"],
-        cwd=ROOT, check=False, capture_output=True, text=True,
+        cwd=ROOT / "core", check=False, capture_output=True, text=True,
     )
     assert completed.returncode == 0, completed.stderr
-    source = (ROOT / "bitwise_surrogate.py").read_text(encoding="utf-8")
+    source = (ROOT / "core" / "bitwise_surrogate.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     assert not any(isinstance(node, ast.Match) for node in ast.walk(tree))
     assert not any(isinstance(node, ast.Attribute) and node.attr == "bit_count" for node in ast.walk(tree))

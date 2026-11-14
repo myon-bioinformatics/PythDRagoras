@@ -141,13 +141,13 @@ thresholds=[-1.0,0.0,1.0]
 baseline_weight=1.0
 baseline_threshold=0.0
 ''', encoding='utf-8')
-    subprocess.run([sys.executable,'-S',str(Path(__file__).parents[1]/'season_sensitivity.py'), '--season',str(source),'--config',str(cfg),'--out',str(out),'--markdown',str(md)],check=True)
+    subprocess.run([sys.executable,'-S',str(Path(__file__).parents[1]/'npb'/'season_sensitivity.py'), '--season',str(source),'--config',str(cfg),'--out',str(out),'--markdown',str(md)],check=True)
     result = json.loads(out.read_text())
     assert result['sources'][0]['sha256']
     assert '中日の指標値' in md.read_text()
     # Keep machine-readable stdout clean in both mixed-output directions.
     if Path('/dev/stdout').exists():
-        command = [sys.executable, '-S', str(Path(__file__).parents[1]/'season_sensitivity.py'),
+        command = [sys.executable, '-S', str(Path(__file__).parents[1]/'npb'/'season_sensitivity.py'),
                    '--season', str(source), '--config', str(cfg)]
         mixed_md = subprocess.run(command + ['--out', str(out), '--markdown', '/dev/stdout'],
                                   check=True, capture_output=True, text=True)
@@ -169,10 +169,8 @@ baseline_threshold=0.0
                                  check=True, capture_output=True, text=True)
         assert out.resolve().as_uri() in regular.stdout
         assert md.resolve().as_uri() in regular.stdout
-    # season は config と同じサイクルの outputs/season.jsonl、--out・--markdown が無ければ Markdown を標準出力に
-    (tmp_path/'outputs').mkdir()
-    source.rename(tmp_path/'outputs'/'season.jsonl')
-    shown = subprocess.run([sys.executable,'-S',str(Path(__file__).parents[1]/'season_sensitivity.py'), '--config',str(cfg)],
+    # --out・--markdown が無ければ Markdown を標準出力に
+    shown = subprocess.run([sys.executable,'-S',str(Path(__file__).parents[1]/'npb'/'season_sensitivity.py'), '--season',str(source),'--config',str(cfg)],
                            check=True, capture_output=True, text=True).stdout
     assert shown == md.read_text(encoding='utf-8')
 

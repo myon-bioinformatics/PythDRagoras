@@ -12,7 +12,7 @@ class StandaloneExamples(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         target = Path(self.temp.name) / "tool"
-        subprocess.run([sys.executable, str(ROOT / "build_stdlib_tool.py"), str(target)], check=True)
+        subprocess.run([sys.executable, str(ROOT / "scripts" / "build_stdlib_tool.py"), str(target)], check=True)
         self.script = target / "pythdragoras.py"
 
     def run_cli(self, *args):

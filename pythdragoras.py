@@ -25,6 +25,9 @@ from pathlib import Path
 
 import polars as pl
 
+# トップにはこのメインだけ。汎用の中身は core/、NPB・シーズン固有は npb/
+sys.path[1:1] = [p for p in (str(Path(__file__).resolve().parent / "core"),) if p not in sys.path]
+
 
 def apply_exclusions(st: pl.DataFrame, exclude: list[dict]) -> tuple[pl.DataFrame, list[dict]]:
     """exclude = [{"season": 2020, "reason": "..."}]。理由のない除外は受け付けない。"""
@@ -432,7 +435,7 @@ def main(argv=None) -> int:
             if confirm and (missing := sorted(set(confirm.get("detail", [])) - {p["id"] for p in props})):
                 raise PropositionError(f"[confirm] の detail に、命題にない id がある: {', '.join(missing)}")
             meta = {"sha256": sha, "code_version": _code_version(), "file": str(args.propositions)}
-            meta["evaluation_axes_code_sha256"] = hashlib.sha256(Path(__file__).with_name("propositions.py").read_bytes()).hexdigest()
+            meta["evaluation_axes_code_sha256"] = hashlib.sha256((Path(__file__).resolve().parent / "core" / "propositions.py").read_bytes()).hexdigest()
             meta["seed_evaluation_sha256"] = (hashlib.sha256(args.seed_evaluation.read_bytes()).hexdigest()
                                                if args.seed_evaluation and args.seed_evaluation.exists() else None)
             results = [{**evaluate(p, included, excluded, focus), "meta": meta} for p in props]
@@ -469,7 +472,7 @@ def main(argv=None) -> int:
         md += "\n## 命題の判定\n\n" + "\n".join(
             f"- {r['id']} {r['statement']}: **exit {r['judgement']['code']} {label(r['judgement']['code'])}** "
             "（" + " / ".join(f"{_FORM.get(f['form'], f['form'])} {_VERD[f['verdict']]}" for f in r["forms"]) + "）"
-            for r in results) + "\n\n詳細は objections.md。終了コードは `python pythdragoras/propositions.py judge` で確かめられる。\n"
+            for r in results) + "\n\n詳細は objections.md。終了コードは `python pythdragoras/core/propositions.py judge` で確かめられる。\n"
     if args.claims:
         with args.claims.open("rb") as f:
             claims = check_claims(tomllib.load(f).get("claim", []), full)

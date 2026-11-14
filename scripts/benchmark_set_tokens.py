@@ -15,7 +15,7 @@ def load(source):
 
 def main():
     old = load(subprocess.check_output(['git', 'show', BASELINE + ':sets.py']))
-    new = load(Path('sets.py').read_text())
+    new = load(Path('core/sets.py').read_text())
     rows = []
     for count in (10, 10000):
         expression = 'A &' * count + ' B   '

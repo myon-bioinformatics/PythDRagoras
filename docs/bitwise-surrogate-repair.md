@@ -1,6 +1,6 @@
 # Bitmask evaluator for candidate rules
 
-`bitwise_surrogate.py` does two things.
+`core/bitwise_surrogate.py` does two things.
 
 1. It evaluates a candidate rule with integer masks. `evaluate_fast` is the predicate. `format_current_rule` prints the same rule.
 2. It can propose one NOT condition as a new proposition to test. The rule under test is left as it is, so its verdict does not move.
@@ -44,10 +44,10 @@ Host: Python 3.12.3, Linux 6.12.94+, x86_64. `time.perf_counter`. Seven repeats 
 | AND of the 139 terms from row masks that were already built | 0.186 ms |
 | `rule_search.search` (`top=20`) | 8.52 ms (min 8.30, max 16.8) |
 
-Rechecking the returned rules is about 3.3× the proposition antecedent (9.74 / 2.95). Rechecking the 139 conjunctions is about 12× (67.2 / 5.55). The search call itself is unchanged: `rule_search.py` is covered by the LittleBit source hash, and once the row masks exist the integer AND of those 139 terms (0.186 ms) is cheaper than walking `evaluate_fast` (2.15 ms). The combination loop stays there.
+Rechecking the returned rules is about 3.3× the proposition antecedent (9.74 / 2.95). Rechecking the 139 conjunctions is about 12× (67.2 / 5.55). The search call itself is unchanged: `core/rule_search.py` is covered by the LittleBit source hash, and once the row masks exist the integer AND of those 139 terms (0.186 ms) is cheaper than walking `evaluate_fast` (2.15 ms). The combination loop stays there.
 
 ```bash
-AOI_ROOT=/path/to/Aoi python bitwise_surrogate.py --aoi-root /path/to/Aoi
+AOI_ROOT=/path/to/Aoi python core/bitwise_surrogate.py --aoi-root /path/to/Aoi
 ```
 
 ## How two rules relate
@@ -76,7 +76,7 @@ On the registered search (Python 3.14.10, Linux 6.18.44, x86_64; 156 team-season
 So the top 20 are not 20 different statements: 29 pairs cannot be told apart on this data, and 12 of the proven containments have no row on either side only. Proofs for the 190 pairs take 0.93 ms (min 0.91, max 0.93); with the row counts 23.6 ms (min 20.6, max 24.0).
 
 ```bash
-AOI_ROOT=/path/to/Aoi python bitwise_surrogate.py --aoi-root /path/to/Aoi --audit
+AOI_ROOT=/path/to/Aoi python core/bitwise_surrogate.py --aoi-root /path/to/Aoi --audit
 ```
 
 ## NOT as a proposition to test

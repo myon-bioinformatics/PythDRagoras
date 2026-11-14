@@ -20,6 +20,6 @@ package = false
 
 [tool.pytest.ini_options]
 # サイクルデータ・scripts/・sakanalytics は Aoi に残す。AOI_ROOT だけで Aoi を指す（.github/workflows/ci.yml）
-pythonpath = ["."]
+pythonpath = [".", "core", "npb"]
 testpaths = ["tests"]
 norecursedirs = [".test-deps", "build", "reports"]

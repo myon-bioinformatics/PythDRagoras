@@ -3,7 +3,7 @@ import argparse
 import ast
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT = '''[build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
@@ -107,13 +107,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("out", type=Path, help="new directory for the generated uv tool project")
     args = parser.parse_args()
-    source = (ROOT / "propositions.py").read_text(encoding="utf-8")
+    source = (ROOT / "core" / "propositions.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     names = ("PropositionError", "DataError", "classification_metrics")
     definitions = {n.name: n for n in tree.body if isinstance(n, (ast.ClassDef, ast.FunctionDef)) and n.name in names}
     if len(definitions) != len(names):
         raise ValueError("canonical proposition definitions changed")
-    generated = '"""Generated stdlib classification metrics; edit propositions.py instead."""\nimport math\n\n'
+    generated = '"""Generated stdlib classification metrics; edit core/propositions.py instead."""\nimport math\n\n'
     generated += "\n\n".join(ast.get_source_segment(source, definitions[name]) for name in names) + "\n" + CLI
     ast.parse(generated)
     args.out.mkdir(parents=True, exist_ok=False)
