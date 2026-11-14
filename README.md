@@ -118,7 +118,7 @@ For work on the stdlib audit and sensitivity modules, an optional locked
 [`audit-test` environment](docs/nano-audit-tests.md) runs four existing test files
 without NumPy/Polars. Keep the ordinary full suite for final verification.
 
-- Tests receive Aoi only through `AOI_ROOT` (the one env var CI sets). `conftest.py` adds the `sakanalytics` path from it, and `PYTHONPATH` is not set by hand. Tests ask Aoi's `aoi_paths.py` for data locations. No `aoi_paths.py` is kept in this repository.
+- Tests receive Aoi only through `AOI_ROOT` (the one env var CI sets). `conftest.py` appends the import paths Aoi's `aoi.py` gives (`aoi.environment()`, Aoi's pytest `pythonpath`) after this repository, so SakAnalytics imports by name; PythDRagoras names no sibling directory and `PYTHONPATH` is not set. Tests ask Aoi's `aoi_paths.py` for data locations. No `aoi_paths.py` is kept in this repository.
 - If `AOI_ROOT` doesn't point to Aoi, pytest stops at the start and gives the reason.
 - The only runtime dependencies are polars and numpy (ortools is not used).
 - In addition, tests use Aoi at `AOI_ROOT`.

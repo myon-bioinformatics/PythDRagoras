@@ -18,8 +18,8 @@ AOI_PROVIDED = {"aoi_paths"}
 KNOWN_EXCEPTIONS = {
     # 実データの列名と sakanalytics の出力を突き合わせる
     ("tests/test_propositions.py", "import:sakanalytics"),
-    # sakanalytics の場所を AOI_ROOT から sys.path と PYTHONPATH に入れる（import はしない）
-    ("conftest.py", "path:sakanalytics"),
+    # 兄弟の import 経路は AOI_ROOT の Aoi の aoi.py（environment()）に聞く
+    ("conftest.py", "import:aoi"),
     # Aoi の scripts/compare_c001_replay.py を AOI_ROOT から読む
     ("tests/test_c001_replay_compare.py", "import:compare_c001_replay"),
     ("tests/test_c001_replay_compare.py", "path:scripts"),
