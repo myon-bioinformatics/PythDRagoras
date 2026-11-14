@@ -145,6 +145,12 @@ baseline_threshold=0.0
     result = json.loads(out.read_text())
     assert result['sources'][0]['sha256']
     assert '中日の指標値' in md.read_text()
+    # season は config と同じサイクルの outputs/season.jsonl、--out・--markdown が無ければ Markdown を標準出力に
+    (tmp_path/'outputs').mkdir()
+    source.rename(tmp_path/'outputs'/'season.jsonl')
+    shown = subprocess.run([sys.executable,'-S',str(Path(__file__).parents[1]/'season_sensitivity.py'), '--config',str(cfg)],
+                           check=True, capture_output=True, text=True).stdout
+    assert shown == md.read_text(encoding='utf-8')
 
 
 def test_incomplete_league_is_not_silently_used_as_peer_reference():

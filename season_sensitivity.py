@@ -296,22 +296,32 @@ def markdown(report):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--season', type=Path, required=True)
+    p.add_argument('--season', type=Path, help='省略時は --config と同じサイクルの outputs/season.jsonl')
     p.add_argument('--additional-season', type=Path, action='append', default=[])
     p.add_argument('--config', type=Path, required=True)
-    p.add_argument('--out', type=Path, required=True)
-    p.add_argument('--markdown', type=Path)
+    p.add_argument('--out', type=Path, help='JSON の出力先')
+    p.add_argument('--markdown', type=Path, help='Markdown の出力先。--out も --markdown も無ければ標準出力')
     args = p.parse_args(argv)
-    sources = [args.season, *args.additional_season]
+    sources = [args.season or args.config.parent / 'outputs' / 'season.jsonl', *args.additional_season]
     rows = [json.loads(line) for path in sources for line in path.read_text(encoding='utf-8').splitlines() if line.strip()]
     report = analyze(rows, tomllib.loads(args.config.read_text(encoding='utf-8')))
     report['sources'] = [{'path': str(path), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()} for path in sources]
     report['config_sha256'] = hashlib.sha256(args.config.read_bytes()).hexdigest()
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False)+'\n', encoding='utf-8')
+    if not args.out and not args.markdown:
+        print(markdown(report), end='')
+        return
+    written = []
+    if args.out:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False)+'\n', encoding='utf-8')
+        written.append(args.out)
     if args.markdown:
         args.markdown.parent.mkdir(parents=True, exist_ok=True)
         args.markdown.write_text(markdown(report), encoding='utf-8')
+        written.append(args.markdown)
+    for path in written:
+        if path.is_file():  # /dev/stdout などはリンクにしない
+            print(f'📄 {path.resolve().as_uri()} {path.stat().st_size} B')
 
 
 if __name__ == '__main__':
