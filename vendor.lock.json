@@ -12,8 +12,8 @@
     },
     {
       "repository": "myon-bioinformatics/Aoi",
-      "ref": "42465a93a016cc645155c8ac30254302ce819020",
-      "commit": "42465a93a016cc645155c8ac30254302ce819020",
+      "ref": "f15063440ee7f5f869cef1546ae651fa32a07505",
+      "commit": "f15063440ee7f5f869cef1546ae651fa32a07505",
       "source": "vendor/uv_tool_build.py",
       "destination": "vendor/uv_tool_build.py",
       "blob_sha": "98d9e6fc55624e5341371ca828b59d0a0897e5f6",
