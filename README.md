@@ -236,12 +236,14 @@ This CLI runs on the standard library alone and does not need SciPy.
 
 ```bash
 python -S pythdragoras/season_sensitivity.py \
-  --season cycles/c001-chunichi/outputs/season.jsonl \
-  --additional-season cycles/c001-chunichi/references/season-2026-central-summary.jsonl \
   --config cycles/c001-chunichi/season_sensitivity.toml \
+  --additional-season cycles/c001-chunichi/references/season-2026-central-summary.jsonl \
   --out cycles/c001-chunichi/outputs/season_sensitivity.json \
   --markdown cycles/c001-chunichi/outputs/season_sensitivity.md
 ```
+
+`--season` defaults to `outputs/season.jsonl` of the cycle that holds `--config`. Written files are printed as `file://` links (📄). If an explicit output targets stdout (for example `/dev/stdout`), links for other files go to stderr so the report stream remains clean.
+Without `--out` and `--markdown`, the Markdown report goes to standard output and nothing is written.
 
 It sets `x + weight × y >= threshold` and computes sensitivity curves with one side fixed.
 It outputs conditional probabilities, MCC, the difference from the baseline, finite-difference slopes, changes, extrema on the grid, the interval of the maximum, and trapezoidal area.
