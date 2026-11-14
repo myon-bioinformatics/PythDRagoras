@@ -1,4 +1,5 @@
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -12,7 +13,8 @@ class StandaloneExamples(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         target = Path(self.temp.name) / "tool"
-        subprocess.run([sys.executable, str(ROOT / "scripts" / "build_stdlib_tool.py"), str(target)], check=True)
+        target.mkdir()
+        shutil.copy2(ROOT / "pythdragoras.py", target / "pythdragoras.py")  # 汎用版はこの 1 ファイルだけで動く
         self.script = target / "pythdragoras.py"
 
     def run_cli(self, *args):

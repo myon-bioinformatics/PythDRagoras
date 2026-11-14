@@ -9,6 +9,15 @@
       "destination": "vendor/py_launch.cjs",
       "blob_sha": "4a35b158b4a4cbd3a5d672ded1337a138a44bbd2",
       "sha256": "f900e2662e7065a087897f4b927815d34a81f0e9ca811c0412151b38a218a501"
+    },
+    {
+      "repository": "myon-bioinformatics/Aoi",
+      "ref": "42465a93a016cc645155c8ac30254302ce819020",
+      "commit": "42465a93a016cc645155c8ac30254302ce819020",
+      "source": "vendor/uv_tool_build.py",
+      "destination": "vendor/uv_tool_build.py",
+      "blob_sha": "98d9e6fc55624e5341371ca828b59d0a0897e5f6",
+      "sha256": "1309ff9277b5dd3a67b5b54645a3dfdda58eed3cbe1db775f7fc57630e2833ce"
     }
   ]
 }
