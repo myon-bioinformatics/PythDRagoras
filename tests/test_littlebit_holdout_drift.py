@@ -58,7 +58,8 @@ def _source_divergence(manifest):
 
 def _source_file(source_root, name):
     assert name.startswith(SOURCE_PREFIX), name
-    return source_root / name[len(SOURCE_PREFIX):]
+    rel = name[len(SOURCE_PREFIX):]  # 記録のキーは pythdragoras/<name>.py のまま。メイン以外の実体は core/ にいる
+    return next((p for p in (source_root / rel, source_root / "core" / rel) if p.is_file()), source_root / rel)
 
 
 _SOURCE_DRIFT = "SHA-256 drift; review provenance, never auto-rebaseline"
@@ -147,7 +148,7 @@ def test_littlebit_change_to_own_source_is_detected_even_if_aoi_copy_is_unchange
     own.mkdir()
     for name in SOURCE_PATHS:
         (own / name[len(SOURCE_PREFIX):]).write_bytes(_source_file(SOURCE_ROOT, name).read_bytes())
-    _verify_provenance(root, manifest, own)
+    _verify_provenance(root, manifest, own, report_source_drift=_source_hash_report_only())
     (own / "littlebit_holdout.py").write_bytes((own / "littlebit_holdout.py").read_bytes() + b"# changed\n")
     with pytest.raises(AssertionError, match="littlebit_holdout.py: SHA-256 drift"):
         _verify_provenance(root, manifest, own)
@@ -544,7 +545,7 @@ def test_littlebit_committed_holdout_regenerates_from_current_generator(tmp_path
     diagnostics = {"runtime": runtime, "comparison": "not-completed",
                    "normalization": "none; exact JSON and Markdown bytes",
                    "source_sha256": {SOURCE_PREFIX + p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-                                     for p in sorted(SOURCE_ROOT.glob("*.py"))}}
+                                     for p in sorted([*SOURCE_ROOT.glob("*.py"), *SOURCE_ROOT.glob("core/*.py")])}}
     try:
         actual = _regenerate(lh, cycle, output)
         assert len(fit_calls) == 1 + len(report["walk_forward"]["folds"]), "every fold must refit, not replay saved models"

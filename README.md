@@ -31,8 +31,8 @@ Topics: mathematics, visualization, education support
 PythDRagoras is a tool that writes explanations as "if A then B" propositions and always verifies them with counterexamples and objections laid out side by side. Its aim is less to produce answers than to find where explanations fall short.
 
 - **Propositions and "objection" (異議あり)**: judged in four forms: the original proposition, contrapositive, converse, and inverse. Judgement criteria are declared before seeing results, and if there is even one counterexample, counterexamples are listed even when the verdict is "supported" ("Propositions and "objection"" below).
-- **Condition search**: exhaustively searches combinations of candidate conditions and ranks them by how well they predict the target state (`rule_search.py`).
-- **Sensitivity analysis**: examines changes when metrics, weights, and boundaries, or per-game runs scored and allowed, are varied (`season_sensitivity.py`, `score_sensitivity.py`).
+- **Condition search**: exhaustively searches combinations of candidate conditions and ranks them by how well they predict the target state (`core/rule_search.py`).
+- **Sensitivity analysis**: examines changes when metrics, weights, and boundaries, or per-game runs scored and allowed, are varied (`npb/season_sensitivity.py`, `npb/score_sensitivity.py`).
 - Exclusions require a reason, and what was excluded and why is kept in the results. External assertions are registered as claims, not observations.
 
 The philosophy is in Aoi's [docs/PythDRagoras.md](https://github.com/myon-bioinformatics/Aoi/blob/main/docs/PythDRagoras.md), and the proposition spec in [docs/propositions.md](https://github.com/myon-bioinformatics/Aoi/blob/main/docs/propositions.md).
@@ -40,69 +40,67 @@ This repository was split out from the [Aoi](https://github.com/myon-bioinformat
 
 ## Installation and usage
 
-### Standalone classification metrics
+### Generic single file (`pythdragoras.py`)
 
-For domain-independent TP / FP / FN / TN counts, generate a stdlib-only `pythdragoras.py` from the canonical `propositions.py` implementation. It reports diagnostic metrics; it does not run the full proposition judgement.
+`pythdragoras.py` is the domain-independent edition: standard library only, and the file runs on its own (copy it anywhere, or `curl` it). It holds no season, NPB or cycle logic.
 
-```bash
-python build_stdlib_tool.py build/pythdragoras-stdlib-tool
-python build/pythdragoras-stdlib-tool/pythdragoras.py 16 0 56 72
-uv tool install ./build/pythdragoras-stdlib-tool
-pythdragoras-metrics 16 0 56 72
-```
-
-Regenerate after changing the canonical implementation. Building the uv tool requires setuptools; the generated tool has no third-party runtime dependencies.
-
-The four positional inputs are true positives, false positives, false negatives, and true negatives, in that order. After installation:
+| | |
+|---|---|
+| 🧮 `metrics` / `classification_metrics` | TP / FP / FN / TN diagnostics (the same definition as `core/propositions.py`; a test keeps them identical) |
+| 🎲 `binom_tail`, `run_tail`, `markov_run_tail` | How unusual a count or a run is |
+| ✂️ `apply_exclusions(rows, exclude, key="season")` | Exclusions need a reason; returns what was removed and why (plain rows or a polars frame) |
+| 🧱 `littlebit` / `reconstruct` | LittleBit: low rank × sign binarization × scales by alternating least squares |
+| 📏 `overlap_bounds`, 🔝 `mcc_upper`, 🔢 `to_bits` / `or_counts` | Approximate row overlaps with a Cauchy–Schwarz error width, an MCC upper bound for count intervals, popcount counting |
 
 ```bash
-pythdragoras-metrics 16 0 56 72
-# JSON includes n=144, precision=1.0, recall=0.2222222222222222
-pythdragoras-metrics 0 0 0 0
-# JSON metrics that have no denominator are null; none_reasons explains why
-pythdragoras-metrics -1 0 0 0
-# Error: counts must be nonnegative integers; exit 2
+python pythdragoras.py 16 0 56 72                     # metrics (TP FP FN TN); also bayes / expected / pythagorean
+echo '[[1,0,1],[0,1,1],[1,1,0]]' | python pythdragoras.py littlebit --rank 2
+python vendor/uv_tool_build.py pythdragoras.py --out build/pythdragoras-tool   # shared builder, vendored from Aoi
+uv tool install ./build/pythdragoras-tool && pythdragoras 16 0 56 72
 ```
 
-Without installation, use the same arguments with `python build/pythdragoras-stdlib-tool/pythdragoras.py`. This computes diagnostics only; proposition files, counterexample evaluation and full reports use the existing application described below.
+The LittleBit here is pure Python (one-sided Jacobi SVD) for matrices up to a few hundred rows and columns. `core/littlebit_prune.py` is the numpy version used inside the analysis; tests check that both give the same approximation. Errors exit 2 (`pythdragoras -1 0 0 0`: counts must be nonnegative integers).
 
-Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/). The only runtime dependencies are polars and numpy (`pyproject.toml`; ortools is not used).
+The season analysis and the rest of the repository need Python 3.11+ and [uv](https://docs.astral.sh/uv/); their runtime dependencies are polars and numpy (`pyproject.toml`; ortools is not used).
 
 ```bash
 git clone https://github.com/myon-bioinformatics/PythDRagoras.git
 cd PythDRagoras
 uv sync
-uv run python pythdragoras.py --help
+uv run python npb/season.py --help
 ```
 
 Analysis inputs (cycle data `cycles/`, etc.) live in Aoi. Paths are resolved and passed in by the caller (Aoi's `aoi_paths.py`). The littlebit CLIs take `--cycle-dir`, or `--root` / `AOI_ROOT` and `AOI_RESEARCH_CYCLE`, and do not search for the layout. Actual command examples are in "Detailed spec and research usage" later on.
 
 ## Layout
 
+Layout: only the generic single file `pythdragoras.py` (and `conftest.py`) sits at the top. General-purpose modules are in `core/`, NPB / season-specific analysis in `npb/`, helpers in `scripts/`. Modules still import each other by plain name (`import propositions`): the tests put `.`, `core` and `npb` on the path (`pyproject.toml`), `npb/season.py` adds the top and `core/` itself, and inside Aoi the path is set by Aoi (`aoi.py`).
+
 | File | Contents |
 |---|---|
-| `pythdragoras.py` | CLI that verifies residuals, rank bias, and propositions from the season table (`apply_exclusions`, `cumulative_test`, `rank_test`, `summary_markdown`) |
-| `propositions.py` | Propositions, counterexamples, objections (spec in [docs/propositions.md](https://github.com/myon-bioinformatics/Aoi/blob/main/docs/propositions.md)) |
-| `sets.py` | Names the conditions of registered propositions as sets, and judges ∩, ∪, ¬ expressions as propositions |
-| `rule_search.py` | Exhaustively searches combinations of conditions ("or" of "and" groups) |
-| `season_sensitivity.py` | Sensitivity search varying annual-stat metrics, weights, and boundaries (standard library only) |
-| `score_sensitivity.py` | Sensitivity analysis varying per-game runs on one axis only (incremental updates) |
-| `littlebit_approx.py`, `littlebit_prune.py`, `littlebit_holdout.py` | Search that turns latent patterns of a candidate 0/1 matrix into candidate conditions, and its verification (experimental) |
-| `littlebit_survey.py` | Image region and centroid estimation without multiplication or floating point (experimental, single file) |
-| `bitwise_surrogate.py` | Bitmask evaluator for candidate rules (`evaluate_fast`). Packs the conditions once and rechecks `rule_search` results and proposition antecedents with the same truth values (nulls stay undetermined). From a false-positive row it proposes a forbidden (NOT) condition as the next proposition to test; it never changes a verdict. `rule_relation` / `audit_rules` (`--audit`) say whether two rules are exclusive, contained in each other, or only overlap, and what the rows show. The dropped repair and the measurements are in [docs/bitwise-surrogate-repair.md](docs/bitwise-surrogate-repair.md) |
-| `registration_audit.py` | Audits provenance labels (pre-registered or posthoc) |
-| `next_seeds.py` | Lays out judgements of the original proposition and its converse and shows seeds for next propositions (not a judgement) |
+| `pythdragoras.py` | Generic single file, standard library only (see above) |
+| `npb/season.py` | CLI that verifies residuals, rank bias, and propositions from the season table (`cumulative_test`, `rank_test`, `summary_markdown`; re-exports the generic `apply_exclusions` and tails) |
+| `core/propositions.py` | Propositions, counterexamples, objections (spec in [docs/propositions.md](https://github.com/myon-bioinformatics/Aoi/blob/main/docs/propositions.md)) |
+| `core/sets.py` | Names the conditions of registered propositions as sets, and judges ∩, ∪, ¬ expressions as propositions |
+| `core/rule_search.py` | Exhaustively searches combinations of conditions ("or" of "and" groups) |
+| `npb/season_sensitivity.py` | Sensitivity search varying annual-stat metrics, weights, and boundaries (standard library only) |
+| `npb/score_sensitivity.py` | Sensitivity analysis varying per-game runs on one axis only (incremental updates) |
+| `core/littlebit_approx.py`, `core/littlebit_prune.py`, `core/littlebit_holdout.py` | Search that turns latent patterns of a candidate 0/1 matrix into candidate conditions, and its verification (experimental) |
+| `core/littlebit_survey.py` | Image region and centroid estimation without multiplication or floating point (experimental, single file) |
+| `core/bitwise_surrogate.py` | Bitmask evaluator for candidate rules (`evaluate_fast`). Packs the conditions once and rechecks `rule_search` results and proposition antecedents with the same truth values (nulls stay undetermined). From a false-positive row it proposes a forbidden (NOT) condition as the next proposition to test; it never changes a verdict. `rule_relation` / `audit_rules` (`--audit`) say whether two rules are exclusive, contained in each other, or only overlap, and what the rows show. The dropped repair and the measurements are in [docs/bitwise-surrogate-repair.md](docs/bitwise-surrogate-repair.md) |
+| `core/registration_audit.py` | Audits provenance labels (pre-registered or posthoc) |
+| `core/next_seeds.py` | Lays out judgements of the original proposition and its converse and shows seeds for next propositions (not a judgement) |
 
-Main functions in `pythdragoras.py` and others:
+Main functions in `npb/season.py` and others:
 
 | Function | Contents |
 |---|---|
-| `apply_exclusions` | Applies seasons excluded from analysis. Exclusions without a reason are rejected, and what was excluded and why is kept in the results |
+| `apply_exclusions` (`pythdragoras.py`) | Applies seasons excluded from analysis. Exclusions without a reason are rejected, and what was excluded and why is kept in the results |
 | `cumulative_test` | Turns the cumulative deviation from expected winning percentage into a z value (both fixed and variable exponent) |
 | `rank_test` | How unusual a bias toward low ranks is. Shows comparisons with the null hypothesis (each season independent and uniform) and with all teams' actual records side by side |
 | `summary_markdown` | Verification record. Does not write causes. Lists the status of competing hypotheses |
-| `propositions.py` | Propositions, counterexamples, objections (spec in [docs/propositions.md](https://github.com/myon-bioinformatics/Aoi/blob/main/docs/propositions.md)) |
-| `littlebit_approx.py` | Turns latent patterns of a candidate 0/1 matrix into candidate conditions (search; judgement is `rule_search.py`) |
+| `core/propositions.py` | Propositions, counterexamples, objections (spec in [docs/propositions.md](https://github.com/myon-bioinformatics/Aoi/blob/main/docs/propositions.md)) |
+| `core/littlebit_approx.py` | Turns latent patterns of a candidate 0/1 matrix into candidate conditions (search; judgement is `core/rule_search.py`) |
 
 ## Tests
 
@@ -120,7 +118,7 @@ For work on the stdlib audit and sensitivity modules, an optional locked
 [`audit-test` environment](docs/nano-audit-tests.md) runs four existing test files
 without NumPy/Polars. Keep the ordinary full suite for final verification.
 
-- Tests receive Aoi only through `AOI_ROOT` (the one env var CI sets). `conftest.py` adds the `sakanalytics` path from it, and `PYTHONPATH` is not set by hand. Tests ask Aoi's `aoi_paths.py` for data locations. No `aoi_paths.py` is kept in this repository.
+- Tests receive Aoi only through `AOI_ROOT` (the one env var CI sets). `conftest.py` appends the import paths Aoi's `aoi.py` gives (`aoi.environment()`, Aoi's pytest `pythonpath`) after this repository, so SakAnalytics imports by name; PythDRagoras names no sibling directory and `PYTHONPATH` is not set. Tests ask Aoi's `aoi_paths.py` for data locations. No `aoi_paths.py` is kept in this repository.
 - If `AOI_ROOT` doesn't point to Aoi, pytest stops at the start and gives the reason.
 - The only runtime dependencies are polars and numpy (ortools is not used).
 - In addition, tests use Aoi at `AOI_ROOT`.
@@ -136,7 +134,7 @@ This README is the same file as Aoi's `pythdragoras/README.md`. Links to documen
 
 ### Cycle paths
 
-`aoi_paths.py` lives in only one place, Aoi's top level (not in this repository). `littlebit_approx.py` and `littlebit_holdout.py` do not guess the layout. The cycle folder is passed with `--cycle-dir`. When omitted, use `--root` or the `AOI_ROOT` environment variable plus the `AOI_RESEARCH_CYCLE` environment variable (`<root>/cycles/<name>`).
+`aoi_paths.py` lives in only one place, Aoi's top level (not in this repository). `core/littlebit_approx.py` and `core/littlebit_holdout.py` do not guess the layout. The cycle folder is passed with `--cycle-dir`. When omitted, use `--root` or the `AOI_ROOT` environment variable plus the `AOI_RESEARCH_CYCLE` environment variable (`<root>/cycles/<name>`).
 
 The SHA-256 of these 2 files is pinned in Aoi's `cycles/c001-chunichi/outputs/exploratory/littlebit-holdout/holdout.provenance.json`. The child's CI reads `source_sha256` and `source_divergence` from the checked-out Aoi as-is. On pull requests a source byte difference is only a warning; on push to main and on schedule it fails. It also fails when the flag is missing. The evidence's `evidence_sha256`, inputs, and `holdout.json` / `holdout.md` are not changed.
 
@@ -214,7 +212,7 @@ External assertions (articles, reports, other AIs) are registered as claims, not
 
 ## Turning latent patterns into candidate conditions
 
-`littlebit_approx.py` turns human-written candidate condition masks into a unit × condition 0/1 matrix and decomposes it with the LittleBit formula (`littlebit_prune.littlebit`). Each latent axis becomes one condition, "does this unit follow the pattern", and is passed to `search`. Counting of holds and counterexamples remains `search`'s bit operations. The target column is not passed to the factors. Added conditions carry `source=littlebit-approx`, rank, seed, the original conditions and weights, and `posthoc=true`. The registration category follows `registration_audit.classify`, and this construction is posthoc.
+`core/littlebit_approx.py` turns human-written candidate condition masks into a unit × condition 0/1 matrix and decomposes it with the LittleBit formula (`littlebit_prune.littlebit`). Each latent axis becomes one condition, "does this unit follow the pattern", and is passed to `search`. Counting of holds and counterexamples remains `search`'s bit operations. The target column is not passed to the factors. Added conditions carry `source=littlebit-approx`, rank, seed, the original conditions and weights, and `posthoc=true`. The registration category follows `registration_audit.classify`, and this construction is posthoc.
 
 The procedure and the rules for dropped axes and residual clues are in [docs/littlebit-approx.md](docs/littlebit-approx.md). The c001 rankings are under `cycles/c001-chunichi/outputs/exploratory/littlebit-approx/`. Confirmation records are in `confirmation.md`.
 
@@ -222,27 +220,28 @@ The null hypothesis treats each season as independent, so it ignores team streng
 For that reason a comparison with all teams over the same period (an empirical baseline) is always shown alongside.
 
 ```bash
-uv run python pythdragoras/pythdragoras.py --season cycles/c001-chunichi/outputs/season.jsonl \
+uv run python pythdragoras/npb/season.py --season cycles/c001-chunichi/outputs/season.jsonl \
   --config cycles/c001-chunichi/analysis.toml --hypotheses cycles/c001-chunichi/hypotheses.toml \
   --propositions cycles/c001-chunichi/propositions.toml --claims cycles/c001-chunichi/claims.toml \
   --outdir cycles/c001-chunichi/outputs
 ```
 
-## Incremental search starting from seasons (season_sensitivity.py)
+## Incremental search starting from seasons (npb/season_sensitivity.py)
 
 First vary the annual-stat metrics, weights, and boundaries, and examine changes and stability.
 Once promising candidates or years where the explanation breaks are visible, move on to the per-game level in the next section.
 This CLI runs on the standard library alone and does not need SciPy.
 
 ```bash
-python -S pythdragoras/season_sensitivity.py \
-  --config cycles/c001-chunichi/season_sensitivity.toml \
+python -S pythdragoras/npb/season_sensitivity.py \
+  --season cycles/c001-chunichi/outputs/season.jsonl \
   --additional-season cycles/c001-chunichi/references/season-2026-central-summary.jsonl \
+  --config cycles/c001-chunichi/season_sensitivity.toml \
   --out cycles/c001-chunichi/outputs/season_sensitivity.json \
   --markdown cycles/c001-chunichi/outputs/season_sensitivity.md
 ```
 
-`--season` defaults to `outputs/season.jsonl` of the cycle that holds `--config`. Written files are printed as `file://` links (📄). If an explicit output targets stdout (for example `/dev/stdout`), links for other files go to stderr so the report stream remains clean.
+Written files are printed as `file://` links (📄). If an explicit output targets stdout (for example `/dev/stdout`), links for other files go to stderr so the report stream remains clean.
 Without `--out` and `--markdown`, the Markdown report goes to standard output and nothing is written.
 
 It sets `x + weight × y >= threshold` and computes sensitivity curves with one side fixed.
@@ -261,7 +260,7 @@ and the per-year table in [the measured results](https://github.com/myon-bioinfo
 2026 is a retrospective match that includes known results, not fully blind.
 After 2026 is merged into the regular season table, the auxiliary input is removed.
 
-## Next stage: changing per-game runs (score_sensitivity.py)
+## Next stage: changing per-game runs (npb/score_sensitivity.py)
 
 Borrowing NNUE's idea of "update only what changed", it subtracts a game's contribution and adds the new one.
 No neural net or trained weights are used. The target is the same raw game records as SakAnalytics.
@@ -269,7 +268,7 @@ RF, RA, W, L, and T are updated incrementally and only derived values are re-eva
 The whole search is proportional to target games × steps × 2 axes.
 
 ```bash
-uv run python pythdragoras/score_sensitivity.py \
+uv run python pythdragoras/npb/score_sensitivity.py \
   --games data/observations/npb_calendar/games.jsonl \
   --config cycles/c001-chunichi/analysis.toml \
   --max-step 3 --out cycles/c001-chunichi/outputs/score_sensitivity.json
@@ -304,7 +303,7 @@ The input range is exactly the raw records the user prepared. Season completenes
 Verification: for 80 random games, **each edit point** of both RF/RA axes and 4 steps is checked against an independent full recomputation.
 Ties, 0 runs allowed, team orientation, duplicate/invalid raw records, exclusions, selection leakage from verification years, and the CLI are also tested.
 
-## LittleBit 3-way survey (experimental, `littlebit_survey.py`)
+## LittleBit 3-way survey (experimental, `core/littlebit_survey.py`)
 
 An experiment measuring how well image regions and centroids can be estimated without multiplication or floating point. It is a single standard-library-only file and does not change existing processing such as `pythdragoras.py`.
 
@@ -314,7 +313,7 @@ An experiment measuring how well image regions and centroids can be estimated wi
 - **Core promise**: Way1–3 core functions (`CORE_FUNCTIONS`) use no `*`, `/`, `**`, or floating point. Indices are built by adding row offsets. Tests check the AST. Ratios become decimals only for display (`--report`). Random seeds are fixed.
 
 ```bash
-python littlebit_survey.py --report
+python core/littlebit_survey.py --report
 ```
 
 ### Pass lines and their basis
@@ -337,9 +336,9 @@ Measured on 6 kinds of 64x64 synthetic images. Tests use fixed seeds (11–16), 
 
 ## Node entry (Node 26+)
 
-- `node vendor/py_launch.cjs --env-var LITTLEBIT_SURVEY_PYTHON -- littlebit_survey.py <args>`
-- `node vendor/py_launch.cjs --env-var SEASON_SENSITIVITY_PYTHON -- season_sensitivity.py <args>`
-- `node vendor/py_launch.cjs --env-var SCORE_SENSITIVITY_PYTHON -- score_sensitivity.py <args>`
+- `node vendor/py_launch.cjs --env-var LITTLEBIT_SURVEY_PYTHON -- core/littlebit_survey.py <args>`
+- `node vendor/py_launch.cjs --env-var SEASON_SENSITIVITY_PYTHON -- npb/season_sensitivity.py <args>`
+- `node vendor/py_launch.cjs --env-var SCORE_SENSITIVITY_PYTHON -- npb/score_sensitivity.py <args>`
 
 There are no per-tool `.cjs` wrappers: each command calls the vendored shared launcher `vendor/py_launch.cjs` (pinned in `vendor.lock.json`) directly, and `--env-var` names the interpreter override. A Node older than 26 exits 2.
 Arguments, stdin/stdout/stderr and the exit code are passed through unchanged; Python runs with `-S`, including interpreter discovery.
@@ -350,18 +349,17 @@ Launcher failures (no Python 3.9+, spawn error, signal) exit 2. Set `PY_LAUNCH_E
 
 Regression tests cover every thin entry with acknowledged repeated signals, text/JSON errors, and a hostile `sitecustomize` hook. They also test `noSite` and `isolated` discovery independently without changing the entries' `noSite: true` configuration or the Node 26+ floor.
 
-### 軽量な単一ファイル版の利用例（生成後）
+### 単一ファイル版の利用例
 
-Python 3.11 以上で次を実行します。生成先は存在しないディレクトリを指定します。
+Python 3.11 以上で、`pythdragoras.py` だけをコピーして実行できます。
 
 ```sh
-python build_stdlib_tool.py /tmp/pythdragoras-tool
-python /tmp/pythdragoras-tool/pythdragoras.py metrics --tp 80 --fp 10 --fn 20 --tn 90
-python /tmp/pythdragoras-tool/pythdragoras.py bayes --prior 0.01 --sensitivity 0.9 --specificity 0.95
-python /tmp/pythdragoras-tool/pythdragoras.py expected 10 0.25 20 0.75
-python /tmp/pythdragoras-tool/pythdragoras.py pythagorean --for 80 --against 60
+python pythdragoras.py metrics --tp 80 --fp 10 --fn 20 --tn 90
+python pythdragoras.py bayes --prior 0.01 --sensitivity 0.9 --specificity 0.95
+python pythdragoras.py expected 10 0.25 20 0.75
+python pythdragoras.py pythagorean --for 80 --against 60
 ```
 
 JSONの `accuracy` は 0.85、`precision` は約 0.889、`recall` は 0.8、`f1` は約 0.842 です。ベイズの `posterior` は約 0.154、期待勝率は 0.64 です。定義できない値は `null` と理由で返します。ピタゴラス期待値の指数は `--exponent` で指定でき、省略時は 2 です。
 
-生成したディレクトリを使い `uv tool install /tmp/pythdragoras-tool` で登録すると、`pythdragoras --help` から同じ機能を利用できます。単一ファイルの実行時に外部ライブラリは不要です。生成とインストールにはそれぞれリポジトリとビルド環境が必要です。
+`python vendor/uv_tool_build.py pythdragoras.py --out /tmp/pythdragoras-tool` のあと `uv tool install /tmp/pythdragoras-tool` で登録すると、`pythdragoras --help` から同じ機能を利用できます。実行時に外部ライブラリは不要です。

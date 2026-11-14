@@ -8,6 +8,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOL = "littlebit_survey"
+SCRIPT = "core/littlebit_survey.py"  # トップにはメインだけ。ツールは core/ にいる
 ENV_VAR = "LITTLEBIT_SURVEY_PYTHON"
 CASES = [{"id": "help", "args": ["--help"], "rc": 0}, {"id": "bogus", "args": ["--bogus"], "rc": 2}]
 
@@ -57,12 +58,12 @@ def _run(argv: list[str], cwd: Path) -> tuple[int, str, str]:
 def _direct(root: Path, *args: str) -> list[str]:
     """The documented command: node vendor/py_launch.cjs --env-var LITTLEBIT_SURVEY_PYTHON -- littlebit_survey.py ARGS."""
     return [NODE, str(root / "vendor" / "py_launch.cjs"), "--env-var", ENV_VAR, "--",
-            str(root / f"{TOOL}.py"), *args]
+            str(root / SCRIPT), *args]
 
 
 def _parity(root: Path, args: list[str]) -> tuple[tuple[int, str, str], tuple[int, str, str]]:
     via_node = _run(_direct(root, *args), root)
-    via_python = _run([sys.executable, "-S", str(ROOT / f"{TOOL}.py"), *args], root)
+    via_python = _run([sys.executable, "-S", str(ROOT / SCRIPT), *args], root)
     return via_node, via_python
 
 
@@ -81,7 +82,7 @@ def test_vendored_launcher_matches_lock():
 def test_no_per_tool_wrapper_and_readme_documents_the_direct_command():
     assert not (ROOT / f"{TOOL}.cjs").exists()
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert f"node vendor/py_launch.cjs --env-var {ENV_VAR} -- {TOOL}.py" in readme
+    assert f"node vendor/py_launch.cjs --env-var {ENV_VAR} -- {SCRIPT}" in readme
     pkg = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
     assert pkg["engines"]["node"] == ">=26"
 
@@ -110,7 +111,8 @@ def test_missing_interpreter_is_launcher_failure(tmp_path):
 def test_entry_forwards_stdin_argv_and_exit_code(tmp_path, code):
     (tmp_path / "vendor").mkdir()
     shutil.copy(ROOT / "vendor" / "py_launch.cjs", tmp_path / "vendor" / "py_launch.cjs")
-    (tmp_path / f"{TOOL}.py").write_text(
+    (tmp_path / SCRIPT).parent.mkdir(exist_ok=True)
+    (tmp_path / SCRIPT).write_text(
         "import json, sys\n"
         "sys.stdout.write(json.dumps({'argv': sys.argv[1:], 'stdin': sys.stdin.read(),"
         " 'nosite': sys.flags.no_site}))\n"

@@ -18,11 +18,14 @@ AOI_PROVIDED = {"aoi_paths"}
 KNOWN_EXCEPTIONS = {
     # 実データの列名と sakanalytics の出力を突き合わせる
     ("tests/test_propositions.py", "import:sakanalytics"),
-    # sakanalytics の場所を AOI_ROOT から sys.path と PYTHONPATH に入れる（import はしない）
-    ("conftest.py", "path:sakanalytics"),
+    # 兄弟の import 経路は AOI_ROOT の Aoi の aoi.py（environment()）に聞く
+    ("conftest.py", "import:aoi"),
     # Aoi の scripts/compare_c001_replay.py を AOI_ROOT から読む
     ("tests/test_c001_replay_compare.py", "import:compare_c001_replay"),
     ("tests/test_c001_replay_compare.py", "path:scripts"),
+    # 親の共通 uv tool ビルダー（Aoi から配布）。"[project.scripts]" の文字列で、Aoi の scripts/ ではない
+    ("vendor/uv_tool_build.py", "path:scripts"),
+    ("tests/test_standalone_metrics.py", "path:scripts"),
     # Aoi の scripts/check_c001_exploratory_candidates.py を importlib で読む
     ("tests/test_c001_exploratory_candidates.py", "path:scripts/check_c001_exploratory_candidates.py"),
 }
@@ -37,7 +40,7 @@ def _sources():
 
 
 def _local_modules():
-    return {p.stem for p in ROOT.glob("*.py")} | {p.stem for p in (ROOT / "tests").glob("*.py")}
+    return {p.stem for d in (".", "core", "npb", "tests") for p in (ROOT / d).glob("*.py")}
 
 
 def _uses(tree):
@@ -76,7 +79,7 @@ def test_known_exceptions_are_still_used():
 def test_aoi_layout_shim_is_gone():
     assert not (ROOT / "aoi_layout.py").exists()
     for name in ("littlebit_approx.py", "littlebit_holdout.py"):
-        tree = ast.parse((ROOT / name).read_text(encoding="utf-8"), filename=name)
+        tree = ast.parse((ROOT / "core" / name).read_text(encoding="utf-8"), filename=name)
         imported = [alias.name.split(".")[0] for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names]
         imported += [node.module.split(".")[0] for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module]
         assert "aoi_layout" not in imported

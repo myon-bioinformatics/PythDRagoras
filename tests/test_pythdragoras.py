@@ -4,7 +4,7 @@ from itertools import product
 import polars as pl
 import pytest
 
-from pythdragoras import apply_exclusions, binom_tail, cumulative_test, rank_test, run_tail, summary_markdown
+from season import apply_exclusions, binom_tail, cumulative_test, rank_test, run_tail, summary_markdown
 
 
 @pytest.mark.parametrize("n,r,p", [(1, 1, 0.5), (3, 2, 0.5), (5, 3, 0.3), (6, 2, 0.5), (8, 4, 0.7), (4, 0, 0.5)])
@@ -77,7 +77,7 @@ def test_summary_renders():
 
 @pytest.mark.parametrize("n,r,p_bb,p_tb,pi_b", [(4, 2, 0.7, 0.3, 0.5), (5, 3, 0.66, 0.34, 0.5), (6, 1, 0.9, 0.1, 0.2), (3, 3, 0.5, 0.5, 0.5)])
 def test_markov_run_tail_matches_brute_force(n, r, p_bb, p_tb, pi_b):
-    from pythdragoras import markov_run_tail
+    from season import markov_run_tail
 
     def prob(seq):
         pr = pi_b if seq[0] else 1 - pi_b
@@ -98,12 +98,12 @@ def test_markov_run_tail_matches_brute_force(n, r, p_bb, p_tb, pi_b):
 
 
 def test_markov_with_no_persistence_equals_independent():
-    from pythdragoras import markov_run_tail
+    from season import markov_run_tail
     assert markov_run_tail(14, 5, 0.5, 0.5, 0.5) == pytest.approx(run_tail(14, 5, 0.5))
 
 
 def test_transitions_counts():
-    from pythdragoras import transitions
+    from season import transitions
     st = _ranks({"d": [4, 5, 6, 2], "g": [1, 2, 4, 1]})
     t = transitions(st)
     assert (t["bb"], t["bt"], t["tb"], t["tt"]) == (2, 2, 1, 1)
@@ -112,12 +112,12 @@ def test_transitions_counts():
 
 def test_reproduces_external_report_markov_figure():
     # 外部レポート（Grok, 2026-10-03）: P(B→B)=0.657 のマルコフ連鎖で「14年連続B」は 0.21%
-    from pythdragoras import markov_run_tail
+    from season import markov_run_tail
     assert markov_run_tail(14, 14, 0.657, 0.343, 0.5) == pytest.approx(0.0021, abs=0.0001)
 
 
 def test_persistence_pairs_only_adjacent_seasons_and_reports_missing():
-    from pythdragoras import persistence
+    from season import persistence
     st = pl.DataFrame({"team": ["a"] * 4 + ["b"] * 4 + ["c"] * 3,
                        "season": [2012, 2013, 2014, 2016] * 2 + [2012, 2013, 2014],
                        "x": [1.0, 2.0, 3.0, 9.0, 2.0, 1.0, 0.0, 9.0, 5.0, 5.5, 6.0]})
@@ -133,13 +133,13 @@ def test_persistence_pairs_only_adjacent_seasons_and_reports_missing():
 
 
 def test_persistence_too_few_pairs():
-    from pythdragoras import persistence
+    from season import persistence
     st = pl.DataFrame({"team": ["a", "a"], "season": [2012, 2013], "x": [1.0, 2.0]})
     assert persistence(st, ["x"])[0]["r"] is None
 
 
 def test_allocation_cumulative_sums_and_z():
-    from pythdragoras import allocation_cumulative
+    from season import allocation_cumulative
     st = pl.DataFrame({"team": ["d", "d", "g"], "team_name": ["中日", "中日", "巨人"],
                        "alloc_net": [-2.0, -1.0, 3.0], "alloc_var": [4.0, 5.0, 9.0],
                        "alloc_net_strat": [-1.0, -1.0, 2.0], "alloc_var_strat": [4.0, 4.0, 4.0]})
@@ -151,7 +151,7 @@ def test_allocation_cumulative_sums_and_z():
 
 
 def test_rank_expectation_poisson_binomial():
-    from pythdragoras import rank_expectation
+    from season import rank_expectation
     st = pl.DataFrame({"team": ["d"] * 3 + ["g"] * 2, "team_name": ["中日"] * 3 + ["巨人"] * 2,
                        "season": [2013, 2014, 2015, 2013, 2014], "upper_half": [False, False, True, True, True],
                        "sim_p_upper": [0.5, 0.5, 0.2, 0.9, 0.5]})
@@ -164,7 +164,7 @@ def test_rank_expectation_poisson_binomial():
 
 
 def test_persistence_by_team_separates_teams():
-    from pythdragoras import persistence_by_team
+    from season import persistence_by_team
     rows = []
     for t, sign in (("d", 1), ("g", -1)):
         for i, y in enumerate(range(2013, 2021)):
@@ -174,7 +174,7 @@ def test_persistence_by_team_separates_teams():
 
 
 def test_shape_expectation_compares_observed_peaks_with_the_constant_strength_baseline():
-    from pythdragoras import TRAJ_FLAGS, shape_expectation
+    from season import TRAJ_FLAGS, shape_expectation
     rows = [("d", 2014, False, True, 0.5), ("d", 2015, False, True, 0.5), ("g", 2014, True, False, 0.2)]
     st = pl.DataFrame([{"team": t, "team_name": t.upper(), "season": s, "upper_half": u,
                         **{f: v for f in TRAJ_FLAGS}, **{f"{f}_base": b for f in TRAJ_FLAGS}} for t, s, u, v, b in rows])
@@ -188,7 +188,7 @@ def test_shape_expectation_compares_observed_peaks_with_the_constant_strength_ba
 
 
 def test_trajectory_sensitivity_lines_up_each_start_and_group():
-    from pythdragoras import SENS_COLS, trajectory_sensitivity
+    from season import SENS_COLS, trajectory_sensitivity
 
     def row(team, up, rank, settle, pct, decay, limit, peak, m):
         return {"season": 2024, "team": team, "team_name": team.upper(), "rank": rank, "upper_half": up, "traj_start_games": m,

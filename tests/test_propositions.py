@@ -455,7 +455,7 @@ def test_judge_flags_redefinition_from_ledger(tmp_path):
 
 
 def test_pipeline_cli_maps_system_errors(tmp_path):
-    from pythdragoras import main as pd_main
+    from season import main as pd_main
     season = tmp_path / "season.jsonl"
     pl.DataFrame({"season": [2024], "team": ["d"], "team_name": ["中日"], "league": ["C"], "W": [1], "L": [1],
                   "rank": [1], "rank_tie": [False], "league_size": [1], "pythag_fixed": [0.5], "pythag_var": [0.5]}
