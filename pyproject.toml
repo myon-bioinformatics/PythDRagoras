@@ -11,6 +11,7 @@ dependencies = [
 ]
 
 [dependency-groups]
+stdlib-test = ["pytest>=8", "pyyaml>=6"]
 dev = ["pytest>=9.1.1"]
 # Optional stdlib metadata/sensitivity tests; does not replace the full suite.
 audit-test = ["pytest>=9.1.1"]
