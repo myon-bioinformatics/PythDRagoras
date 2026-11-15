@@ -18,6 +18,8 @@ AOI_PROVIDED = {"aoi_paths"}
 KNOWN_EXCEPTIONS = {
     # 実データの列名と sakanalytics の出力を突き合わせる
     ("tests/test_propositions.py", "import:sakanalytics"),
+    # SakAnalytics #45 以降はシーズンの関数が npb/team_season.py（取り込み前の Aoi では sakanalytics）
+    ("tests/test_propositions.py", "import:team_season"),
     # 兄弟の import 経路は AOI_ROOT の Aoi の aoi.py（environment()）に聞く
     ("conftest.py", "import:aoi"),
     # Aoi の scripts/compare_c001_replay.py を AOI_ROOT から読む
