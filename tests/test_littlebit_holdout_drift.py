@@ -316,7 +316,8 @@ def test_ci_resolves_aoi_main_without_hard_pinning_its_sha():
     assert "https://github.com/myon-bioinformatics/Aoi" in workflow
     assert "refs/heads/main" in workflow
     assert "GITHUB_STEP_SUMMARY" in workflow
-    assert "aoi_ref" in workflow
+    assert "AOI_REF" in workflow
+    assert "workflow_dispatch:" not in workflow
     assert "schedule:" in workflow
     assert "HOLDOUT_SOURCE_PROVENANCE" in workflow
     assert "actions/setup-python" not in workflow

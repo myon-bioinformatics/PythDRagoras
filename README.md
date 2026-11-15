@@ -112,7 +112,7 @@ git -C .test-deps/aoi checkout main
 AOI_ROOT=$PWD/.test-deps/aoi uv run pytest -q --junitxml=reports/junit.xml
 ```
 
-CI (`.github/workflows/ci.yml`) does the same on Python 3.11–3.15. A ref can be given via `aoi_ref` in `workflow_dispatch`. The resolved SHA is left in the job summary.
+CI (`.github/workflows/ci.yml`) does the same on Python 3.11–3.15. An empty `AOI_REF` resolves `refs/heads/main`. The resolved SHA is left in the job summary.
 
 For work on the stdlib audit and sensitivity modules, an optional locked
 [`audit-test` environment](docs/nano-audit-tests.md) runs four existing test files
