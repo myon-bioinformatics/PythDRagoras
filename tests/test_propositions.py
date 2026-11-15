@@ -192,7 +192,10 @@ def test_cycle1_files_reference_real_columns():
     import tomllib
     from pathlib import Path
 
-    from sakanalytics import add_persistence, batting_join, inning_decomposition, season_table, to_team_games
+    try:  # SakAnalytics #45 以降、シーズンの関数は npb/team_season.py（Aoi の aoi.py が sakanalytics/npb を渡す）
+        from team_season import add_persistence, batting_join, inning_decomposition, season_table, to_team_games
+    except ImportError:  # 取り込み前の Aoi では sakanalytics.py の中
+        from sakanalytics import add_persistence, batting_join, inning_decomposition, season_table, to_team_games
 
     import aoi_paths
     root = aoi_paths.resolve_cycle_path(aoi_paths.resolve_aoi_root(anchor=Path(__file__)))
