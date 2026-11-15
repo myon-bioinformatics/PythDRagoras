@@ -1,20 +1,32 @@
-"""🌐 Fleet contracts: parent pins, CI setup, Node entries through the vendored py_launch.cjs, launcher regressions.
+"""🌐 Fleet contracts through the parent's shared checks (vendor/fleet_check.py): vendor lock, parent pins, CI setup,
+Node entries through the vendored py_launch.cjs, launcher contract.
 
-旧 test_pythdragoras_parent_workflow_pins.py・test_ci_python_provider.py・test_littlebit_survey_node_entry.py・
-test_score_sensitivity_node_entry.py・test_season_sensitivity_node_entry.py・test_node_launcher_regressions.py を
-ここにまとめた（節の頭に旧ファイルの名前を書いた）。名前は org の多数（tests/test_fleet.py）に合わせた。
-親の vendor/fleet_check.py はまだ取り込んでいないので、中身はこのリポジトリの検査のまま。
+共通の検査（lock のバイト・親の参照・ジョブの切り出し・Node と Python の一致・ランチャーの契約）は親の fleet_check に任せ、
+ここにはこのリポジトリの期待値（ピン・ツール・ケース・文言）と、fleet_check にまだ無い検査だけを残す。
 
 Node entry: `node vendor/py_launch.cjs --env-var <TOOL>_PYTHON -- <core|npb>/<tool>.py ARGS` (no per-tool wrapper).
 """
 from __future__ import annotations
 
-import hashlib, json, os, re, select, shutil, signal, subprocess, sys
+import importlib.util, json, os, re, select, shutil, signal, subprocess, sys
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
+# Aoi は子を全部 1 回の pytest で回す。トップの `vendor` パッケージは子どうしでぶつかるので、ファイルから固有の名前で読む
+_spec = importlib.util.spec_from_file_location("pythdragoras_fleet_check", ROOT / "vendor/fleet_check.py")
+fleet = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(fleet)
+
+PARENT_WORKFLOW_PIN = "9e3da7ae1846e9604ebc24bb5178f7de094a4e77"
+PARENT_REPOSITORY_ID = "638801160"
+LIVE_PARENT_REF = "${{ steps.parent.outputs.sha }}"
+ACCEPTED = {
+    "vendor/py_launch.cjs": "9e0147a17695ce63fa73daf75d8195a4f49095bb",
+    "vendor/uv_tool_build.py": "f15063440ee7f5f869cef1546ae651fa32a07505",
+    "vendor/fleet_check.py": "6c29503cf17eda856766ddfdf4d66a5b0965a8b1",
+}
 # Node 入口: ツール名 -> 本体（トップにはメインだけ。ツールは core/ と npb/ にいる）。環境変数は <TOOL>_PYTHON
 SCRIPTS = {
     "littlebit_survey": "core/littlebit_survey.py",
@@ -22,65 +34,32 @@ SCRIPTS = {
     "season_sensitivity": "npb/season_sensitivity.py",
 }
 CASES = [{"id": "help", "args": ["--help"], "rc": 0}, {"id": "bogus", "args": ["--bogus"], "rc": 2}]
-
-
-def _node() -> str | None:
-    node = os.environ.get("NODE") or shutil.which("node")
-    if node:
-        try:
-            result = subprocess.run([node, "--version"], capture_output=True, text=True, timeout=10)
-        except (OSError, subprocess.SubprocessError):
-            return None
-        match = re.match(r"v(\d+)", result.stdout.strip())
-        if result.returncode == 0 and match and int(match[1]) >= 26:
-            return node
-    return None
-
-
-NODE = _node()
+NODE = fleet.node()
 needs_node = pytest.mark.skipif(NODE is None, reason="Node 26+ not available (set NODE)")
 every_tool = pytest.mark.parametrize("tool", list(SCRIPTS))
 
 
-# ==== parent pins（旧 test_pythdragoras_parent_workflow_pins.py）: local rollout contract; adopted vendor locks are deliberately independent
-
-PARENT = "myon-bioinformatics/myon-bioinformatics"
-PARENT_WORKFLOW_PIN = "9e3da7ae1846e9604ebc24bb5178f7de094a4e77"
-PARENT_REPOSITORY_ID = "638801160"
-LIVE_PARENT_REF = "${{ steps.parent.outputs.sha }}"
+def _env_var(tool: str) -> str:
+    return f"{tool.upper()}_PYTHON"
 
 
-def _workflow_texts():
-    for path in sorted((ROOT / ".github/workflows").glob("*")):
-        if path.suffix in (".yml", ".yaml"):
-            yield path, path.read_text(encoding="utf-8")
+# ==== vendor lock: placed bytes and accepted commits (adopted vendor locks are deliberately independent of the parent pin)
+
+def test_vendor_lock_matches_checked_in_bytes_and_accepted_commits():
+    rows = fleet.check_lock(ROOT, commits=ACCEPTED)
+    launcher = rows["vendor/py_launch.cjs"]
+    assert (launcher["repository"], launcher["source"]) == ("myon-bioinformatics/Aoi", "vendor/py_launch.cjs")
+    shared = rows["vendor/fleet_check.py"]
+    assert (shared["repository"], shared["source"]) == (fleet.PARENT, "fleet_check.py")
 
 
-def _checkout_ref(lines, index):
-    for item in lines[index + 1:index + 12]:
-        match = re.fullmatch(r"\s+ref:\s*(.+?)\s*", item)
-        if match:
-            return match.group(1).strip().strip("'\"")
-    return None
-
+# ==== parent pins: local rollout contract
 
 def test_parent_workflow_references_use_reviewed_rollout_commit():
-    pins = []
-    live_refs = []
-    for _path, text in _workflow_texts():
-        # Capture mutable and shortened references too, rather than ignoring them.
-        pins.extend(re.findall(r"uses:\s*['\"]?" + re.escape(PARENT) + r"/[^\s@'\"]+@([^\s'\"]+)", text))
-        lines = text.splitlines()
-        for i, line in enumerate(lines):
-            if re.fullmatch(r"\s+repository:\s*['\"]?" + re.escape(PARENT) + r"['\"]?\s*", line):
-                ref = _checkout_ref(lines, i)
-                if ref == LIVE_PARENT_REF:
-                    live_refs.append(ref)
-                else:
-                    pins.append(ref)
-    assert pins, "shared parent references must remain observable"
-    assert set(pins) == {PARENT_WORKFLOW_PIN}, pins
-    assert live_refs == [LIVE_PARENT_REF]
+    # Mutable and shortened references are returned too, rather than ignored.
+    refs = fleet.parent_refs(ROOT)
+    assert refs.count(LIVE_PARENT_REF) == 1, refs
+    assert {ref for ref in refs if ref != LIVE_PARENT_REF} == {PARENT_WORKFLOW_PIN}, refs
 
 
 def test_vendor_dispatch_verifies_lock_on_resolved_parent_main():
@@ -98,15 +77,11 @@ def test_vendor_dispatch_verifies_lock_on_resolved_parent_main():
         if "vendor_dispatch.py" in line:
             assert "-S" not in line
             assert "--record" not in line
-    lock = json.loads((ROOT / "vendor.lock.json").read_text(encoding="utf-8"))
-    assert lock["schema"] == "vendor-lock/1"
-    assert isinstance(lock["files"], list)
 
 
 def test_vendor_dispatch_node_floor_matches_setup_node():
     """Execute the defensive guard at the Node 26 boundary."""
-    text = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    job = text.split("\n  vendor-dispatch:", 1)[1]
+    job = fleet.workflow_job(ROOT, "vendor-dispatch")
     guard = re.search(r'if \[\[ "\$node_major" -lt \d+ \]\]; then\n.*?\n          fi', job, re.S)
     assert guard is not None
     assert 'node-version: "26"' in job
@@ -118,18 +93,11 @@ def test_vendor_dispatch_node_floor_matches_setup_node():
         assert result.returncode == expected, (major, result.stdout, result.stderr)
 
 
-# ==== CI setup（旧 test_ci_python_provider.py）: offline guards for the CI interpreter preparation order
-
-def _job(text, name):
-    match = re.search(r"^  " + re.escape(name) + r":\n(.*?)(?=^  [\w-]+:|\Z)", text, re.M | re.S)
-    assert match, name
-    return match.group(1)
-
+# ==== CI setup: offline guards for the CI interpreter preparation order
 
 def test_python_setup_precedes_both_metadata_resolvers():
-    text = (ROOT / ".github/workflows/ci.yml").read_text()
     for name, version in (("test", "${{ matrix.python }}"), ("vendor-dispatch", "3.15")):
-        job = _job(text, name)
+        job = fleet.workflow_job(ROOT, name)
         setup = job.index("uses: astral-sh/setup-uv@")
         python = re.search(r"\bpython3?\s+(?:-c|-\s|[A-Za-z_])", job)
         assert python is not None
@@ -141,10 +109,8 @@ def test_python_setup_precedes_both_metadata_resolvers():
 
 
 def test_ci_requires_node_for_node_entry_parity():
-    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    job = workflow.split("\n  test:\n", 1)[1]
     # The test job must set up Node before running its pytest suite.
-    job = job.split("\n  failure-identity:", 1)[0]
+    job = fleet.workflow_job(ROOT, "test")
     assert "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1" in job
     assert "node-version: '26'" in job
     assert "Require supported Node in parity CI" in job
@@ -152,54 +118,7 @@ def test_ci_requires_node_for_node_entry_parity():
         assert NODE is not None, "Node 26+ is required for the Node parity suite"
 
 
-# ==== Node entry（旧 test_<tool>_node_entry.py ×3）: Node entry parity with each tool's .py
-
-def _env_var(tool: str) -> str:
-    return f"{tool.upper()}_PYTHON"
-
-
-def _env(tool: str) -> dict[str, str]:
-    env = dict(os.environ)
-    env[_env_var(tool)] = sys.executable
-    env.pop("PY_LAUNCH_ERROR_FORMAT", None)
-    return env
-
-
-def _run(tool: str, argv: list[str], cwd: Path) -> tuple[int, str, str]:
-    p = subprocess.run(argv, cwd=cwd, env=_env(tool), capture_output=True, text=True,
-                       encoding="utf-8", errors="replace", timeout=120)
-    return p.returncode, p.stdout, p.stderr
-
-
-def _direct(root: Path, tool: str, *args: str) -> list[str]:
-    """The documented command: node vendor/py_launch.cjs --env-var <TOOL>_PYTHON -- <dir>/<tool>.py ARGS."""
-    return [NODE, str(root / "vendor" / "py_launch.cjs"), "--env-var", _env_var(tool), "--",
-            str(root / SCRIPTS[tool]), *args]
-
-
-def _parity(root: Path, tool: str, args: list[str]) -> tuple[tuple[int, str, str], tuple[int, str, str]]:
-    via_node = _run(tool, _direct(root, tool, *args), root)
-    via_python = _run(tool, [sys.executable, "-S", str(ROOT / SCRIPTS[tool]), *args], root)
-    return via_node, via_python
-
-
-def _copy_launcher(tmp_path: Path, tool: str) -> dict[str, str]:
-    (tmp_path / "vendor").mkdir()
-    shutil.copyfile(ROOT / "vendor/py_launch.cjs", tmp_path / "vendor/py_launch.cjs")
-    return _env(tool)
-
-
-def test_vendored_launcher_matches_lock():
-    lock = json.loads((ROOT / "vendor.lock.json").read_text(encoding="utf-8"))
-    entry = next(f for f in lock["files"] if f["destination"] == "vendor/py_launch.cjs")
-    assert entry["repository"] == "myon-bioinformatics/Aoi"
-    assert entry["commit"] == entry["ref"] == "9e0147a17695ce63fa73daf75d8195a4f49095bb"
-    assert entry["source"] == "vendor/py_launch.cjs"
-    data = (ROOT / "vendor" / "py_launch.cjs").read_bytes()
-    assert hashlib.sha256(data).hexdigest() == entry["sha256"]
-    blob = hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
-    assert blob == entry["blob_sha"]
-
+# ==== Node entry: parity with each tool's .py, and the launcher contract under each tool's <TOOL>_PYTHON
 
 @every_tool
 def test_no_per_tool_wrapper_and_readme_documents_the_direct_command(tool):
@@ -215,49 +134,36 @@ def test_no_per_tool_wrapper_and_readme_documents_the_direct_command(tool):
                          ids=[c["id"] for c in CASES])
 @every_tool
 def test_node_matches_python(tool, args, expected_rc):
-    via_node, via_python = _parity(ROOT, tool, args)
+    via_node, via_python = fleet.node_parity(ROOT, SCRIPTS[tool], _env_var(tool), *args)
     assert via_python[0] == expected_rc
     assert via_node == via_python
 
 
 @needs_node
 @every_tool
-def test_missing_interpreter_is_launcher_failure(tmp_path, tool):
-    env = _env(tool)
-    env[_env_var(tool)] = str(tmp_path / "no-such-python")
-    p = subprocess.run(_direct(ROOT, tool, "--help"), env=env,
-                       capture_output=True, text=True, encoding="utf-8", timeout=60)
-    assert p.returncode == 2
-    assert p.stdout == ""
+def test_vendored_launcher_keeps_its_contract(tool):
+    """Missing interpreter, argv/stdin/exit passthrough under -S, -S during discovery, resolvePython flags, SIGINT then SIGTERM."""
+    fleet.launcher_contract(ROOT, _env_var(tool))
+
+
+# ==== launcher regressions not in fleet_check yet (candidates for the parent): real processes, launcher inherited only from Aoi
+
+def _launcher_env(tmp_path: Path, tool: str) -> dict[str, str]:
+    (tmp_path / "vendor").mkdir()
+    shutil.copyfile(ROOT / "vendor/py_launch.cjs", tmp_path / "vendor/py_launch.cjs")
+    env = {**os.environ, _env_var(tool): sys.executable}
+    env.pop("PY_LAUNCH_ERROR_FORMAT", None)
+    return env
 
 
 @needs_node
-@pytest.mark.parametrize("code", [0, 1, 3, 7])
-@every_tool
-def test_entry_forwards_stdin_argv_and_exit_code(tmp_path, tool, code):
-    env = _copy_launcher(tmp_path, tool)
-    script = tmp_path / SCRIPTS[tool]
-    script.parent.mkdir(exist_ok=True)
-    script.write_text(
-        "import json, sys\n"
-        "sys.stdout.write(json.dumps({'argv': sys.argv[1:], 'stdin': sys.stdin.read(),"
-        " 'nosite': sys.flags.no_site}))\n"
-        f"sys.exit({code})\n", encoding="utf-8")
-    p = subprocess.run(_direct(tmp_path, tool, "a b", "--x=ü"), env=env,
-                       input="こんにちは\n", capture_output=True, text=True, encoding="utf-8", timeout=60)
-    assert p.returncode == code
-    assert json.loads(p.stdout) == {"argv": ["a b", "--x=ü"], "stdin": "こんにちは\n", "nosite": 1}
-
-
-# ==== launcher regressions（旧 test_node_launcher_regressions.py）: real-process regressions for the launcher inherited only from Aoi
-
-def _direct_top(tmp_path: Path, tool: str) -> list[str]:
-    """The documented command with the tool at the top of a scratch copy: node vendor/py_launch.cjs --env-var <TOOL>_PYTHON -- <tool>.py."""
-    return [NODE, str(tmp_path / "vendor/py_launch.cjs"), "--env-var", _env_var(tool), "--",
-            str(tmp_path / f"{tool}.py")]
-
-
-def _site_hook(tmp_path: Path, env: dict[str, str]) -> Path:
+@pytest.mark.parametrize("mode", ["run", "main"])
+@pytest.mark.parametrize("flags", [{}, {"noSite": True}, {"isolated": True}, {"noSite": True, "isolated": True}],
+                         ids=["default", "noSite", "isolated", "both"])
+def test_library_discovery_flags_are_independent(tmp_path, mode, flags):
+    """`run` and `main` against a hostile site hook (fleet.launcher_contract covers `resolvePython`)."""
+    env = dict(os.environ)
+    env.pop("PY_LAUNCH_ERROR_FORMAT", None)
     marker = tmp_path / "site-hook-ran"
     (tmp_path / "sitecustomize.py").write_text(
         "import os\n"
@@ -266,39 +172,11 @@ def _site_hook(tmp_path: Path, env: dict[str, str]) -> Path:
         "raise SystemExit(42)\n", encoding="utf-8",
     )
     env.update(PYTHONPATH=str(tmp_path), PY_LAUNCH_SITE_MARKER=str(marker))
-    return marker
-
-
-@needs_node
-@every_tool
-def test_every_entry_suppresses_site_during_discovery(tmp_path, tool):
-    env = _copy_launcher(tmp_path, tool)
-    marker = _site_hook(tmp_path, env)
-    (tmp_path / f"{tool}.py").write_text(
-        "import sys\nprint(sys.flags.no_site)\n", encoding="utf-8",
-    )
-    result = subprocess.run(
-        _direct_top(tmp_path, tool), cwd=tmp_path, env=env,
-        capture_output=True, text=True, timeout=10,
-    )
-    assert not marker.exists(), "interpreter discovery must also use -S"
-    assert (result.returncode, result.stdout, result.stderr) == (0, "1\n", "")
-
-
-@needs_node
-@pytest.mark.parametrize("mode", ["resolve", "run", "main"])
-@pytest.mark.parametrize("flags", [{}, {"noSite": True}, {"isolated": True}, {"noSite": True, "isolated": True}],
-                         ids=["default", "noSite", "isolated", "both"])
-def test_library_discovery_flags_are_independent(tmp_path, mode, flags):
-    env = dict(os.environ)
-    env.pop("PY_LAUNCH_ERROR_FORMAT", None)
-    marker = _site_hook(tmp_path, env)
     script = tmp_path / "echo.py"
     script.write_text("print('safe')\n", encoding="utf-8")
     options = json.dumps({"python": sys.executable, **flags})
     script_arg = json.dumps(str(script))
     calls = {
-        "resolve": f"launcher.resolvePython({options}); console.log('safe');",
         "run": f"process.stdout.write(launcher.run({script_arg}, [], {options}).stdout);",
         "main": f"launcher.main({script_arg}, {options});",
     }
@@ -324,11 +202,12 @@ def _expect_line(process: subprocess.Popen, expected: bytes) -> None:
 @needs_node
 @pytest.mark.skipif(os.name == "nt", reason="requires POSIX signals and process groups")
 @every_tool
-@pytest.mark.parametrize("ignored,terminal", [("SIGINT", "SIGTERM"), ("SIGTERM", "SIGINT")])
 @pytest.mark.parametrize("repetitions", [0, 2], ids=["direct", "repeated"])
 @pytest.mark.parametrize("error_format", ["text", "json"])
-def test_every_entry_forwards_acknowledged_signals(tmp_path, tool, ignored, terminal, repetitions, error_format):
-    env = _copy_launcher(tmp_path, tool)
+def test_every_entry_forwards_acknowledged_sigterm_then_sigint(tmp_path, tool, repetitions, error_format):
+    """The reverse order of fleet.launcher_contract (acknowledged SIGINT, terminal SIGTERM), with the exact error line."""
+    ignored, terminal = "SIGTERM", "SIGINT"
+    env = _launcher_env(tmp_path, tool)
     env["PY_LAUNCH_ERROR_FORMAT"] = error_format
     (tmp_path / f"{tool}.py").write_text(
         "import signal, time\n"
@@ -341,8 +220,8 @@ def test_every_entry_forwards_acknowledged_signals(tmp_path, tool, ignored, term
         "    time.sleep(60)\n", encoding="utf-8",
     )
     process = subprocess.Popen(
-        _direct_top(tmp_path, tool), cwd=tmp_path, env=env,
-        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        [NODE, str(tmp_path / "vendor/py_launch.cjs"), "--env-var", _env_var(tool), "--", str(tmp_path / f"{tool}.py")],
+        cwd=tmp_path, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         start_new_session=True,
     )
     try:

@@ -120,7 +120,7 @@ without NumPy/Polars. Keep the ordinary full suite for final verification.
 
 - Tests receive Aoi only through `AOI_ROOT` (the one env var CI sets). `conftest.py` appends the import paths Aoi's `aoi.py` gives (`aoi.environment()`, Aoi's pytest `pythonpath`) after this repository, so SakAnalytics imports by name; PythDRagoras names no sibling directory and `PYTHONPATH` is not set. Tests ask Aoi's `aoi_paths.py` for data locations. No `aoi_paths.py` is kept in this repository.
 - If `AOI_ROOT` doesn't point to Aoi, pytest stops at the start and gives the reason.
-- 🗂️ Test files: mostly one per module (`tests/test_<module>.py`; `test_standalone_examples.py` = the single file `pythdragoras.py`, `test_pythdragoras.py` = `npb/season.py`), plus 🌐 `tests/test_fleet.py` for cross-repository contracts (parent pins, CI setup, Node entries, launcher regressions).
+- 🗂️ Test files: mostly one per module (`tests/test_<module>.py`; `test_standalone_examples.py` = the single file `pythdragoras.py`, `test_pythdragoras.py` = `npb/season.py`), plus 🌐 `tests/test_fleet.py` for cross-repository contracts (vendor lock, parent pins, CI setup, Node entries, launcher contract), which calls the parent's shared checks `vendor/fleet_check.py` (pinned in `vendor.lock.json`).
 - The only runtime dependencies are polars and numpy (ortools is not used).
 - In addition, tests use Aoi at `AOI_ROOT`.
   - SakAnalytics: `tests/test_propositions.py:195` (`sakanalytics`, put on the path by `conftest.py`).
