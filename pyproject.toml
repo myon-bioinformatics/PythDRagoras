@@ -1,29 +1,15 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "pythdragoras"
 version = "0.1.0"
-description = "本当にその説明で十分か？ 命題・判例・異議あり（Aoi の pythdragoras/ から独立）"
 requires-python = ">=3.11"
-# 📦 実行時の依存は無い（pythdragoras.py は標準ライブラリだけ）。polars・numpy は core/・npb/ の
-# 解析（rule_search・season など）用で dev グループ。単独でその解析を動かすときは uv sync（dev は既定で入る）。
 dependencies = []
 
-[dependency-groups]
-stdlib-test = ["pytest>=8"]
-dev = [
-    "pytest>=9.1.1",
-    "polars>=2.0.0",
-    # 2.5.4 は Python 3.12 以上。3.11 はパッケージの Requires-Python で 2.4.6 になり、上限は書かない。
-    "numpy>=2.5.4; python_version >= '3.12'",
-    "numpy>=2.4.6",
-]
-# Optional stdlib metadata/sensitivity tests; does not replace the full suite.
-audit-test = ["pytest>=9.1.1"]
+[project.scripts]
+"pythdragoras" = "pythdragoras:main"
 
-[tool.uv]
-package = false
-
-[tool.pytest.ini_options]
-# サイクルデータ・scripts/・sakanalytics は Aoi に残す。AOI_ROOT だけで Aoi を指す（.github/workflows/ci.yml）
-pythonpath = [".", "core", "npb"]
-testpaths = ["tests"]
-norecursedirs = [".test-deps", "build", "reports"]
+[tool.setuptools]
+py-modules = ["pythdragoras"]

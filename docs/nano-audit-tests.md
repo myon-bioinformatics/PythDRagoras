@@ -1,5 +1,7 @@
 # Optional audit and sensitivity test environment
 
+> 📜 **Historical record.** The root `pyproject.toml` is now the uv-tool project for `pythdragoras.py` (no dependency groups, no `uv.lock`), so the `audit-test` group below no longer exists in this repository. Tests run from Aoi's checkout (see the README). The measurement below is kept as it was on 2026-11-04.
+
 `audit-test` is an opt-in, pytest-only dependency group for four complete existing
 files: registration audit, score sensitivity, season sensitivity, and littlebit
 survey. It is useful while editing those stdlib modules without installing the

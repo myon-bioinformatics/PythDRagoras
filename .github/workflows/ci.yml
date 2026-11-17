@@ -124,10 +124,19 @@ jobs:
           node-version: '26'
       - name: Require supported Node in parity CI
         run: node -e "if (+process.versions.node.split('.')[0] < 26) process.exit(1)"
+      - name: Replace Aoi pythdragoras/ with this repository's tree
+        run: |
+          rm -rf .test-deps/aoi/pythdragoras
+          mkdir .test-deps/aoi/pythdragoras
+          git archive HEAD | tar -x -C .test-deps/aoi/pythdragoras
+          # 置き換えた tree を index に載せて、git に登録したファイルで照合するテストが同じものを見るようにする
+          git -C .test-deps/aoi add -A pythdragoras
+          test "$(git -C .test-deps/aoi write-tree --prefix=pythdragoras/)" = "$(git rev-parse 'HEAD^{tree}')"
       - run: python -m compileall -q -x '\.test-deps' .
-      - run: uv run --locked --python "${{ matrix.python }}" pytest -q --junitxml=reports/junit.xml
-        env:
-          AOI_ROOT: ${{ github.workspace }}/.test-deps/aoi
+      # 依存は Aoi の lock（pytest・polars・numpy）を使う。このリポジトリのルートは uv tool の pyproject だけで、依存グループも uv.lock も持たない
+      - name: Test with JUnit
+        working-directory: .test-deps/aoi
+        run: uv run --locked --python "${{ matrix.python }}" pytest -q -c pyproject.toml pythdragoras/tests --junitxml="$GITHUB_WORKSPACE/reports/junit.xml"
       - name: Preserve JUnit report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
