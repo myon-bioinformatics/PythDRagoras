@@ -23,6 +23,7 @@ _spec.loader.exec_module(fleet)
 PARENT_WORKFLOW_PIN = "fbf433b296ec047f1c9acdf4d5d12c81ff7f59e8"
 LIVE_PARENT_REF = "${{ steps.parent.outputs.sha }}"
 ACCEPTED = {
+    "vendor/cli_args.py": "5ae22b1a1b808eca93e3c385a8db867fbeb8ee32",
     "vendor/py_launch.cjs": "9e0147a17695ce63fa73daf75d8195a4f49095bb",
     "vendor/fleet_check.py": "64db25eb0fd9025dbe3cbcbced8b88a39ecb9266",
 }
@@ -46,6 +47,7 @@ def _env_var(tool: str) -> str:
 
 def test_vendor_lock_matches_checked_in_bytes_and_accepted_commits():
     sources = {
+        "vendor/cli_args.py": ("myon-bioinformatics/cli_args", "cli_args.py"),
         "vendor/py_launch.cjs": ("myon-bioinformatics/Aoi", "vendor/py_launch.cjs"),
         "vendor/fleet_check.py": (fleet.PARENT, "fleet_check.py"),
     }

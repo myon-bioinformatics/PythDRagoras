@@ -3,6 +3,7 @@
 - CLI: 1 ファイルだけを写して `python -I` で動かした例と、入力の誤り
 - LittleBit など: numpy 版（core/littlebit_prune.py）と同じ近似、core/propositions.py と同じ定義
 """
+import importlib.util
 import json
 import shutil
 import subprocess
@@ -12,6 +13,10 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+_cli_spec = importlib.util.spec_from_file_location("pythdragoras_cli_args", ROOT / "vendor/cli_args.py")
+_cli_args = importlib.util.module_from_spec(_cli_spec)
+sys.modules[_cli_spec.name] = _cli_args
+_cli_spec.loader.exec_module(_cli_args)
 
 
 class StandaloneExamples(unittest.TestCase):
@@ -24,12 +29,12 @@ class StandaloneExamples(unittest.TestCase):
         self.script = target / "pythdragoras.py"
 
     def run_cli(self, *args):
-        return subprocess.run([sys.executable, "-I", str(self.script), *args], cwd=self.temp.name, text=True, capture_output=True)
+        return _cli_args.run_cli(self.script, *args, python_options=("-I",), cwd=self.temp.name)
 
     def call(self, *args):
         result = self.run_cli(*args)
         self.assertEqual(result.returncode, 0, result.stderr)
-        return json.loads(result.stdout)
+        return result.json()
 
     def test_examples(self):
 
