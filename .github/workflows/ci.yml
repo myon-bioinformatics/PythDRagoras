@@ -277,7 +277,7 @@ jobs:
 
   # 🔁 own sources follow main: on schedule / manual run, take main of own repositories and push to main
   follow-main:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'schedule'
     uses: myon-bioinformatics/myon-bioinformatics/.github/workflows/reusable-follow-main.yml@main
     permissions:
       contents: write
